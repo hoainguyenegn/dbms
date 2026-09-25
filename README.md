@@ -19,7 +19,7 @@ Hệ thống được thiết kế để minh họa và thực nghiệm 3 chủ 
 ## 2. Xác thực (Authentication) & Phân quyền (RBAC)
 
 | Vai trò (Role) | Quyền hạn và Trách nhiệm nghiệp vụ |
-|:---|:---|:---|:---|
+|:---|:---|
 | **`MANAGER`** (Quản lý) | Quản lý danh mục sự kiện (F01), cấu hình buổi biểu diễn và các loại vé (F02), xuất bản/đóng sự kiện, xem báo cáo doanh thu và phân tích tồn vé (F07). |
 | **`USER`** (Khách hàng) | Tìm kiếm sự kiện (F03), giữ vé tạm thời 300s (F04), đặt vé qua ACID Transaction (F05), tra cứu lịch sử đơn hàng (F06), nhận thông báo và gửi lại email mã vé điện tử (F08). Bị chặn truy cập các API quản trị (`/api/admin/*`). |
 
