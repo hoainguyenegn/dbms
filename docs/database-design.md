@@ -6,15 +6,13 @@
 | **Phiên bản** | 1.0 |
 | **Ngày phát hành** | 2026-09-25 |
 | **Môn học** | Hệ quản trị Cơ sở dữ liệu (DBMS - HK261) |
-| **Nhóm thực hiện** | Nhóm 3 thành viên (Storage, Transaction, Concurrency) |
 | **Hệ quản trị CSDL** | **MySQL 8.0 (InnoDB)** làm System of Record + **Redis 7.0 (In-Memory)** làm Concurrency Cache |
-| **Trạng thái** | Tài liệu thiết kế kiến trúc CSDL chính thức của đồ án |
 
 ---
 
 ## 1. Tổng quan Kiến trúc Dữ liệu (Dual-DBMS Architecture)
 
-Hệ thống đặt vé sự kiện **EventBox** là một ứng dụng Web hiện đại (Modern Full-Stack Web Application) phục vụ bài toán bán vé trực tuyến thời gian thực. Để giải quyết triệt để các thách thức về **Lưu trữ dữ liệu có cấu trúc (Storage)**, **Tính toàn vẹn giao dịch (ACID Transaction)** và **Kiểm soát đồng thời giờ cao điểm (Concurrency Control)**, kiến trúc dữ liệu được thiết kế kết hợp hai hệ quản trị CSDL:
+Hệ thống đặt vé sự kiện **EventBox** là một Web Application phục vụ bài toán bán vé trực tuyến. Để giải quyết triệt để các thách thức về **Lưu trữ dữ liệu có cấu trúc (Storage)**, **Tính toàn vẹn giao dịch (ACID Transaction)** và **Kiểm soát đồng thời (Concurrency Control)**, kiến trúc dữ liệu được thiết kế kết hợp hai hệ quản trị CSDL:
 
 ```
 [ Client: React 19 SPA ]
@@ -41,12 +39,6 @@ Hệ thống đặt vé sự kiện **EventBox** là một ứng dụng Web hi�
 - **Cơ chế giữ vé tạm thời (Reservation Hold - F04):** Trong các sự kiện "hot", hàng nghìn người dùng có thể cùng lúc chọn vé. Redis thực thi các kịch bản **Lua Script đơn luồng nguyên tử (Atomic)** để kiểm tra và trừ tồn khả dụng trong bộ nhớ RAM cực nhanh mà không gây quá tải cho MySQL.
 - **Hết hạn tự động (Time-To-Live - TTL):** Phiếu giữ vé tạm thời được gán thời gian sống chính xác là **300 giây (5 phút)**. Khi quá hạn, vé tự động được giải phóng cho khách hàng khác mà không làm sai lệch dữ liệu tài chính trong MySQL.
 - **Tính độc lập:** Redis hoạt động như tầng đệm gia tốc. Dữ liệu Redis được phép mất hoặc khởi động lại mà không làm ảnh hưởng đến dữ liệu vé đã chốt đơn trong MySQL.
-
-### 1.3. Khả năng Vận hành trên Nền tảng Đám mây (Cloud Managed DBMS)
-Cơ sở dữ liệu được thiết kế tuân thủ nguyên tắc **Cloud-Native / 12-Factor App**:
-- Vận hành linh hoạt trên cả **Localhost** (Docker / Homebrew) và **Cloud Managed Database** (Aiven MySQL, AWS RDS, TiDB Cloud, PlanetScale, Railway, Upstash Redis).
-- Hỗ trợ kết nối an toàn qua chứng chỉ SSL/TLS (`rejectUnauthorized: true`).
-- Toàn bộ cấu trúc CSDL được định nghĩa độc lập dưới dạng tài liệu kỹ thuật và chuyển giao thành các script SQL phục vụ việc tái tạo môi trường tự động (Infrastructure as Code - IaC).
 
 ---
 
@@ -88,7 +80,6 @@ erDiagram
 
     USERS {
         int id PK
-        string username UK
         string password_hash
         string full_name
         string email UK
@@ -460,7 +451,6 @@ Nhằm đảm bảo tính tập trung chuyên môn sâu vào môn học Hệ qu�
 1. **Cơ chế Đăng nhập & Xác thực Chuẩn:**
    - Người dùng bắt buộc phải đăng nhập qua biểu mẫu chuẩn (Form Login) bằng tên đăng nhập (`username`) và mật khẩu (`password`).
    - Mật khẩu được băm và so khớp an toàn bằng thuật toán Bcrypt.
-   - **Tuyệt đối không hỗ trợ cơ chế Quick Demo / 1-Click bypass login** nhằm đảm bảo tính toàn vẹn của mô hình xác thực và phân quyền RBAC.
    - Phân quyền nghiêm ngặt: Khách hàng chỉ truy cập được đơn hàng và phiếu giữ của chính mình (`user_id = token.userId`); Quản lý mới có quyền điều chỉnh danh mục sự kiện và xem bảng tổng hợp doanh thu.
 2. **Phạm vi Xử lý Giao dịch:**
    - **Hoàn toàn không hỗ trợ giao dịch tiền tệ bên thứ 3 hay kết nối cổng thanh toán ngân hàng** (như VNPAY, MoMo, ZaloPay, Stripe...).
