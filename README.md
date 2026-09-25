@@ -46,20 +46,8 @@ Hệ thống được thiết kế để minh họa và thực nghiệm 3 chủ 
 Đồ án đã xây dựng bộ tài liệu kỹ thuật hoàn chỉnh:
 👉 **[Xem chi tiết: docs/database-design.md](docs/database-design.md)**
 - **Mô hình Khái niệm & ERD (Mermaid):** Biểu diễn 7 thực thể và quan hệ nghiệp vụ.
-- **Phân tích Chuẩn hóa Dữ liệu (1NF, 2NF, 3NF, BCNF):** Chứng minh loại bỏ triệt để dị thường cập nhật và dư thừa dữ liệu.
 - **Từ điển dữ liệu (Data Dictionary):** Cấu trúc 9 bảng quan hệ (`users`, `events`, `event_showings`, `ticket_types`, `reservations`, `reservation_items`, `bookings`, `booking_items`, `tickets`).
 - **Chiến lược Đánh Chỉ mục (Index Strategy):** Tối ưu 8 loại câu lệnh truy vấn đề bài (Insert, Delete, Update, Simple Query, Composite Query, Join, Subquery, Aggregate).
-
-### 4.2. Trạng thái Hiện tại của Đồ án
-> [!NOTE]
-> **Tiến độ Đồ án:** Hiện tại nhóm đã hoàn thành xuất sắc giai đoạn **Phân tích Nghiệp vụ & Thiết kế Cơ sở Dữ liệu**. 
-> Toàn bộ cấu trúc bảng, kiểu dữ liệu và ràng buộc toàn vẹn được quy định rõ trong [docs/database-design.md](docs/database-design.md). Nhóm chưa chính thức khởi tạo và chạy các file SQL trên môi trường vận hành thực tế; các file script trong thư mục `database/mysql/` là bản phác thảo kỹ thuật (draft prototype) chuẩn bị cho bước sinh mã DDL và nạp dữ liệu ở giai đoạn tiếp theo.
-
-### 4.3. Vai trò của Script SQL khi triển khai trên Cloud Managed DBMS
-Dù vận hành trên Localhost hay Cloud (Aiven, AWS RDS, TiDB, PlanetScale, Railway...):
-1. **Cloud chỉ cấp Database rỗng:** Dịch vụ Cloud không tự tạo bảng; bắt buộc phải chạy script DDL (`001_init_schema.sql`) để khởi tạo cấu trúc 9 bảng và ràng buộc toàn vẹn.
-2. **Dữ liệu Demo (Fixture):** Script DML (`001_seed_fixture.sql`) nạp tài khoản demo `manager01`, `user01` và các sự kiện mẫu phục vụ buổi bảo vệ đồ án.
-3. **Tiêu chuẩn học thuật (IaC):** File SQL là bằng chứng nộp bài đánh giá kỹ năng thiết kế DBMS, giúp tái tạo toàn bộ CSDL trên bất kỳ Cloud nào chỉ trong 10 giây.
 
 ---
 
@@ -164,7 +152,7 @@ Tất cả các endpoint tuân thủ chuẩn RESTful API, định dạng JSON v�
 | **F02** | `DELETE` | `/api/admin/ticket-types/:id` | `MANAGER` | Xóa loại vé thuộc sự kiện nháp |
 | **F04** | `POST` | `/api/reservations` | `USER` | Tạo phiếu giữ vé tạm thời (TTL 300 giây trên Redis) |
 | **F04** | `GET` | `/api/reservations/:id` | `USER` | Tra cứu trạng thái phiếu giữ và thời gian còn lại |
-| **F05** | `POST` | `/api/bookings/confirm` | `USER` | **Xác nhận đặt vé qua ACID Transaction** |
+| **F05** | `POST` | `/api/bookings/confirm` | `USER` | Xác nhận đặt vé qua ACID Transaction |
 | **F05** | `POST` | `/api/bookings/:id/cancel` | `USER` | Hủy đơn hàng hợp lệ trước giờ biểu diễn |
 | **F06** | `GET` | `/api/bookings/my` | `USER` | Tra cứu danh sách đơn hàng đã đặt của cá nhân |
 | **F06** | `GET` | `/api/bookings/:id` | `USER` | Xem chi tiết đơn hàng và danh sách mã vé điện tử |
@@ -177,7 +165,7 @@ Tất cả các endpoint tuân thủ chuẩn RESTful API, định dạng JSON v�
 
 | Thành viên | Trách nhiệm chính (DBMS Core Area) | Phạm vi Nghiệp vụ & API | Giao diện đảm nhiệm (UI Module) |
 |:---|:---|:---|:---|
-| **Thành viên 1**  | **Data Storage & Management** | • Thiết kế lược đồ CSDL quan hệ chuẩn hóa 3NF/BCNF.<br>• Viết DDL migration (`001_init_schema.sql`) và seed (`001_seed_fixture.sql`).<br>• Xây dựng nền tảng Auth & RBAC (`/api/auth/*`).<br>• Thực hiện **F01** (Quản lý sự kiện), **F02** (Suất diễn & Loại vé) và **F03** (Khám phá công khai). | • Trang chủ khám phá sự kiện (F03)<br>• Modal chi tiết sự kiện & xem vé<br>• Bảng điều khiển Quản trị viên sự kiện (`MANAGER` - F01, F02)<br>• Modal Đăng nhập / Quick Demo Login |
+| **Thành viên 1**  | **Data Storage & Management** | • Thiết kế lược đồ CSDL quan hệ chuẩn hóa 3NF/BCNF.<br>• Viết DDL migration (`001_init_schema.sql`) và seed (`001_seed_fixture.sql`).<br>• Xây dựng nền tảng Auth & RBAC (`/api/auth/*`).<br>• Thực hiện **F01** (Quản lý sự kiện), **F02** (Suất diễn & Loại vé) và **F03** (Khám phá công khai). | • Trang chủ khám phá sự kiện (F03)<br>• Modal chi tiết sự kiện & xem vé<br>• Bảng điều khiển Quản trị viên sự kiện (`MANAGER` - F01, F02)<br>• Modal Đăng nhập |
 | **Thành viên 2** | **Transaction Processing** | • Thiết kế và thực thi giao dịch ACID xác nhận đặt vé (**F05**).<br>• Quản lý lịch sử đơn hàng (**F06**).<br>• Tích hợp gửi email mã vé điện tử tự động (**F08**). | • Luồng thanh toán & Xác nhận đơn hàng (F05)<br>• Trang Lịch sử đơn hàng cá nhân (F06)<br>• Chức năng bấm gửi lại email vé điện tử (F08) |
 | **Thành viên 3** | **Concurrency Control** | • Quản lý tranh chấp giữ vé tạm thời bằng Redis Lua script và TTL 300s (**F04**).<br>• Thiết kế các câu truy vấn thống kê, tổng hợp doanh thu và báo cáo hiệu suất (**F07**). | • Giao diện chọn vé và đếm ngược thời gian giữ vé 300s (F04)<br>• Bảng điều khiển Báo cáo thống kê doanh thu (`MANAGER` - F07) |
 
@@ -190,5 +178,3 @@ Toàn bộ hồ sơ kỹ thuật của đồ án được tổ chức khoa học
 - [`docs/ba/README.md`](docs/ba/README.md): Tổng quan bộ hồ sơ đặc tả nghiệp vụ EventBox.
 - [`docs/ba/00-product-scope.md`](docs/ba/00-product-scope.md): Phạm vi sản phẩm, kiến trúc N-tier, phân quyền RBAC và khả năng vận hành Cloud/Local.
 - [`docs/ba/01-requirements.md`](docs/ba/01-requirements.md): Quy tắc nghiệp vụ (BR-01 đến BR-23), tiêu chí nghiệm thu F01–F08 và API skeleton.
-- [`docs/ba/02-data-model.md`](docs/ba/02-data-model.md): Mô hình thực thể ERD, nguyên tắc quản lý dữ liệu SoR trên MySQL và Cache trên Redis.
-- [`docs/ba/03-demo-acceptance.md`](docs/ba/03-demo-acceptance.md): Kịch bản kiểm thử nghiệm thu, dữ liệu fixture, ma trận 8 loại truy vấn đề bài.
