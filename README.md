@@ -1,170 +1,151 @@
-# EventBox — Đồ án môn Cơ sở dữ liệu (DBMS)
-
-Đồ án môn **Cơ sở dữ liệu (HK261)** · Node.js · MySQL · Redis
-
----
-
-## Tổng quan
-
-**EventBox** là đề tài hệ thống đặt vé sự kiện trực tuyến phục vụ môn học **Cơ sở dữ liệu (DBMS)**. Hệ thống bao gồm REST API backend, cơ sở dữ liệu và trang web tĩnh giới thiệu đồ án. Dự án được xây dựng nhằm minh họa và thực nghiệm ba chủ đề DBMS trọng tâm: **Data Storage & Management**, **Transaction** và **Concurrency** trên MySQL 8.x và Redis 7.x. 
-
-Phần giao diện người dùng (UI) phục vụ chức năng nghiệp vụ và thực nghiệm demo do từng thành viên tự thiết kế và triển khai độc lập theo phân công.
-
-Tài liệu phân tích nghiệp vụ chi tiết tại [`docs/ba/`](docs/ba/).
+# EventBox — Hệ thống Đặt vé Sự kiện Trực tuyến
+> **Đồ án môn học: Hệ quản trị Cơ sở dữ liệu (DBMS - HK261)**  
+> **Kiến trúc:** N-tier Web Application
+> **Công nghệ:** React 19 (SPA) · Node.js & Express 5 (REST API) · MySQL 8.0 (InnoDB) · Redis 7.0 (In-memory)
 
 ---
 
-## Kiến trúc
+## 1. Giới thiệu tổng quan
 
-```
-Web tĩnh / UI Demo  ──HTTP──▶  Node.js (Express)  ──▶  MySQL 8.x
-                                                  ──▶  Redis 7.x
-```
+**EventBox** là ứng dụng web đặt vé sự kiện trực tuyến phục vụ đồ án môn **Hệ quản trị Cơ sở dữ liệu (DBMS)**. 
 
-| Thành phần | Công nghệ | Vai trò |
-|---|---|---|
-| Frontend | Web tĩnh / UI demo | Trang chủ giới thiệu Đồ án DBMS; UI nghiệp vụ mỗi người tự làm |
-| Backend | Node.js + Express | REST API, kiểm tra nghiệp vụ |
-| Database chính | MySQL 8.x | Danh mục sự kiện, đơn vé, lịch sử |
-| Cache / giữ vé | Redis 7.x | Bản đọc nhanh phiếu giữ, quản lý TTL |
+Hệ thống được thiết kế để minh họa và thực nghiệm 3 chủ đề DBMS cốt lõi:
+1. **Data Storage & Management** 
+2. **Transaction** 
+3. **Concurrency** 
 
 ---
 
-## Cấu trúc repository
+## 2. Xác thực (Authentication) & Phân quyền (RBAC)
 
-```
-DBMS/
-├── frontend/          # React + Vite
-│   └── src/
-│       ├── pages/     # Các trang giao diện
-│       ├── App.jsx
-│       └── main.jsx
-├── backend/           # Node.js + Express
-│   └── src/
-│       ├── config/    # Kết nối MySQL, Redis
-│       ├── app.js
-│       └── server.js
-├── database/
-│   ├── mysql/         # Migrations, seeds, queries
-│   └── redis/         # Lua scripts
-├── docs/ba/           # Tài liệu phân tích nghiệp vụ
-├── .env.example       # Mẫu cấu hình
-└── README.md
-```
+| Vai trò (Role) | Quyền hạn và Trách nhiệm nghiệp vụ |
+|:---|:---|:---|:---|
+| **`MANAGER`** (Quản lý) | Quản lý danh mục sự kiện (F01), cấu hình buổi biểu diễn và các loại vé (F02), xuất bản/đóng sự kiện, xem báo cáo doanh thu và phân tích tồn vé (F07). |
+| **`USER`** (Khách hàng) | Tìm kiếm sự kiện (F03), giữ vé tạm thời 300s (F04), đặt vé qua ACID Transaction (F05), tra cứu lịch sử đơn hàng (F06), nhận thông báo và gửi lại email mã vé điện tử (F08). Bị chặn truy cập các API quản trị (`/api/admin/*`). |
 
 ---
 
-## Cài đặt và chạy
+## 3. Danh mục 8 Chức năng Nghiệp vụ (F01 – F08)
 
-### Yêu cầu
+| STT | Mã | Tên chức năng | Mô tả nghiệp vụ | Vai trò | Chủ đề DBMS |
+|:---:|:---:|:---|:---|:---:|:---:|
+| 1 | **F01** | Quản lý sự kiện | Tạo, cập nhật, xóa nháp sự kiện; quản lý vòng đời trạng thái (`DRAFT` → `PUBLISHED` → `CLOSED`). | `MANAGER` | Storage |
+| 2 | **F02** | Quản lý suất diễn & loại vé | Thiết lập địa điểm, thành phố, lịch mở bán/kết thúc; định nghĩa các hạng vé (VIP, Standard...), đơn giá VND và sức chứa (`capacity`). | `MANAGER` | Storage |
+| 3 | **F03** | Tìm kiếm & Xem chi tiết sự kiện | Tìm kiếm theo từ khóa, thể loại, thành phố; xem chi tiết suất diễn và tính toán tồn vé khả dụng thời gian thực. | Public / `USER` | Storage |
+| 4 | **F04** | Giữ vé tạm thời (Reservation Hold) | Cấp phiếu giữ vé có thời hạn (TTL 300s) chống cướp vé; kiểm tra sức chứa khả dụng; chống trùng lặp yêu cầu qua `request_key`. | `USER` | Concurrency |
+| 5 | **F05** | Xác nhận & Hủy đặt vé | Xác nhận đơn hàng qua **ACID Transaction**: sinh mã vé điện tử, giải phóng phiếu giữ; hỗ trợ hủy toàn bộ đơn trước giờ diễn. | `USER` | Transaction |
+| 6 | **F06** | Tra cứu lịch sử đơn vé | Xem danh sách các đơn đã đặt, trạng thái đơn (`CONFIRMED`, `CANCELLED`), chi tiết từng vé và thông tin sự kiện. | `USER` | Transaction |
+| 7 | **F07** | Thống kê & Báo cáo doanh thu | Tổng hợp số vé bán ra, tổng doanh thu theo sự kiện/buổi; thống kê tỷ lệ lấp đầy sức chứa; truy vấn các buổi chưa có đơn hàng. | `MANAGER` | Concurrency / Storage |
+| 8 | **F08** | Thông báo & Gửi vé qua Email | Tự động gửi email xác nhận kèm danh sách mã vé điện tử duy nhất cho khách hàng ngay khi hoàn tất giao dịch; hỗ trợ gửi lại email từ trang lịch sử đơn. | `USER` / Hệ thống | Transaction / Integration |
 
-- Node.js 20+ (khuyên dùng Node 22 LTS)
-- MySQL 8.x (cài đặt cục bộ)
-- Redis 7.x (cài đặt cục bộ)
+---
 
-### 1. Biến môi trường
+## 4. Thiết kế Cơ sở Dữ liệu & Kiến trúc Vận hành (Local & Cloud DBMS)
+
+### 4.1. Tài liệu Thiết kế & Mô tả Cơ sở Dữ liệu
+👉 **[Xem chi tiết: docs/database-design.md](docs/database-design.md)**
+
+---
+
+## 5. Hướng dẫn Khởi chạy Ứng dụng
+
+### Yêu cầu hệ thống:
+- **Node.js:** Phiên bản 20+ (Khuyên dùng Node 22 LTS).
+
+### Các bước khởi chạy:
 
 ```bash
-cp .env.example .env
-cp frontend/.env.example frontend/.env
-```
-
-- Cấu hình thông tin kết nối MySQL và Redis trong `.env` sao cho khớp với cài đặt trên máy của bạn.
-- `frontend/.env`: địa chỉ API backend (`VITE_API_URL=http://localhost:3000`).
-
-### 2. Cài dependencies
-
-```bash
+# 1. Cài đặt dependencies cho Backend và Frontend
 npm --prefix backend install
 npm --prefix frontend install
-```
 
-### 3. Khởi động database
-
-Đảm bảo dịch vụ MySQL và Redis trên máy đang hoạt động:
-
-```bash
-# Trên macOS (nếu dùng Homebrew):
-brew services start mysql
-brew services start redis
-
-# Trên Linux:
-sudo systemctl start mysql
-sudo systemctl start redis
-
-# Kiểm tra nhanh:
-redis-cli ping               # Trả về PONG
-```
-
-### 4. Chạy backend
-
-```bash
+# 2. Khởi động Backend API Skeleton (Terminal 1)
 npm --prefix backend run dev
-# API tại http://localhost:3000
-```
+# -> Server REST API hoạt động tại: http://localhost:3000
 
-### 5. Chạy frontend
-
-```bash
+# 3. Khởi động Frontend Homepage (Terminal 2)
 npm --prefix frontend run dev
-# Giao diện tại http://localhost:5173
+# -> Giao diện Homepage hoạt động tại: http://localhost:5173
 ```
 
----
-
-## API
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/` | Tên và phiên bản API |
-| GET | `/health/live` | Express đang chạy |
-| GET | `/health` | Trạng thái MySQL và Redis |
-
-Các endpoint nghiệp vụ đầy đủ được mô tả tại [`docs/ba/01-requirements.md §6`](docs/ba/01-requirements.md).
-
----
-
-## Sử dụng hằng ngày
-
+### Kiểm tra cú pháp và build giao diện:
 ```bash
-# Chạy đồng thời 2 terminal
-npm --prefix backend run dev    # terminal 1
-npm --prefix frontend run dev   # terminal 2
-
-# Dừng: Ctrl+C ở các terminal
+npm --prefix frontend run lint
+npm --prefix frontend run build
 ```
 
 ---
 
-## Xử lý lỗi thường gặp
+## 6. Quy tắc Git & Phối hợp Nhóm (Team Git Conventions)
 
-| Triệu chứng | Kiểm tra |
-|---|---|
-| Không kết nối được MySQL / Redis | Đảm bảo service MySQL/Redis cục bộ đang chạy và tài khoản/mật khẩu trong file `.env` đã chính xác |
-| Frontend không gọi được API | Kiểm tra `VITE_API_URL` và `FRONTEND_URL`; restart dev server sau khi sửa `.env` |
-| Port bị chiếm (3000 hoặc 5173) | Đóng tiến trình đang dùng cổng hoặc đổi PORT khác trong `.env` |
+Để đảm bảo 3 thành viên làm việc song song không gây xung đột mã nguồn (merge conflicts) và giữ mã nguồn luôn ổn định:
+
+### 6.1. Chiến lược phân nhánh (Branching Strategy)
+```
+  main         ────────────────────────────────────────● [Bản demo bảo vệ]
+                ▲                                     ▲
+  develop      ─┼─────────────────●─────────────────●─┴─ [Tích hợp chung]
+                │                 ▲                 ▲
+  feature/*    ─┴─ feature/f01 ───┘                 │
+               └───────── feature/f04-f07 ──────────┘
+```
+- **`main`:** Nhánh chính, phản ánh trạng thái mã nguồn ổn định nhất phục vụ demo và nộp bài cho Giảng viên. Tuyệt đối **không commit trực tiếp** lên `main`.
+- **`develop`:** Nhánh tích hợp trung tâm của cả nhóm. Mọi tính năng sau khi kiểm tra xong sẽ được hợp nhất (merge) vào đây.
+- **`feature/<mã-chức-năng>-<tên-ngắn>`:** Nhánh làm việc độc lập của từng thành viên:
+  - `feature/f01-f02-events`: Quản lý sự kiện, suất diễn, loại vé (Thành viên 1).
+  - `feature/f05-f06-f08-bookings`: Đặt vé ACID, lịch sử đơn, email vé (Thành viên 2).
+  - `feature/f04-f07-redis-reports`: Giữ vé Redis TTL, báo cáo doanh thu (Thành viên 3).
+
+### 6.2. Quy tắc Commit (Conventional Commits)
+Thông điệp commit phải rõ ràng, tuân thủ tiền tố:
+- `feat:` Thêm chức năng nghiệp vụ mới (ví dụ: `feat(f08): add email ticket notification service`).
+- `fix:` Sửa lỗi (ví dụ: `fix(auth): prevent duplicate username registration`).
+- `docs:` Cập nhật tài liệu đặc tả, readme (ví dụ: `docs: update cloud db setup guide`).
+- `test:` Bổ sung kịch bản kiểm thử (ví dụ: `test: add unit test for acid booking rollback`).
+- `refactor:` Tối ưu mã nguồn nhưng không đổi nghiệp vụ (ví dụ: `refactor: clean up db connection pool`).
+
+### 6.3. Quy trình Pull Request (PR) & Code Review
+1. Trước khi tạo PR, kéo code mới nhất từ `develop` về nhánh của mình:
+   ```bash
+   git checkout develop && git pull origin develop
+   git checkout feature/your-feature
+   git merge develop
+   ```
+2. Tạo Pull Request trên GitHub hướng vào nhánh `develop`.
+3. Ít nhất 1 thành viên khác trong nhóm xem lại (Review) và Approve trước khi merge.
 
 ---
 
-## Quy trình làm việc nhóm
+## 7. Bảng Tổng hợp Thiết kế API Skeleton
 
-```
-main        ← bản ổn định để demo
-develop     ← tích hợp công việc nhóm
-feature/*   ← phát triển từng chức năng
-```
+Tất cả các endpoint tuân thủ chuẩn RESTful API, định dạng JSON và có mã trạng thái HTTP chuẩn mực:
 
-Commit: `package.json`, `package-lock.json`, `*.env.example`  
-Không commit: `.env`, `node_modules/`, `dist/`, secret/mật khẩu thật
+| Chức năng | Phương thức | Đường dẫn API | Xác thực & Quyền | Mô tả nghiệp vụ |
+|:---|:---:|:---|:---:|:---|
+| **Hệ thống** | `GET` | `/` | Public | Thông tin phiên bản API |
+| **Hệ thống** | `GET` | `/health` | Public | Kiểm tra kết nối MySQL và Redis |
+| **Auth** | `POST` | `/api/auth/login` | Public | Đăng nhập tài khoản, trả về JWT Token |
+| **Auth** | `POST` | `/api/auth/logout` | Đã đăng nhập | Đăng xuất phiên làm việc |
+| **Auth** | `GET` | `/api/auth/me` | Đã đăng nhập | Lấy thông tin tài khoản và vai trò người dùng |
+| **F03** | `GET` | `/api/events` | Public | Tìm kiếm sự kiện công khai (lọc keyword, category, city) |
+| **F03** | `GET` | `/api/events/:id` | Public | Chi tiết sự kiện, danh sách suất diễn và tồn vé khả dụng |
+| **F01** | `GET` | `/api/admin/events` | `MANAGER` | Lấy toàn bộ danh sách sự kiện theo trạng thái |
+| **F01** | `POST` | `/api/admin/events` | `MANAGER` | Tạo sự kiện mới (trạng thái ban đầu `DRAFT`) |
+| **F01** | `PATCH` | `/api/admin/events/:id` | `MANAGER` | Chỉnh sửa thông tin sự kiện nháp |
+| **F01** | `DELETE` | `/api/admin/events/:id` | `MANAGER` | Xóa sự kiện nháp chưa bán vé |
+| **F01** | `POST` | `/api/admin/events/:id/publish` | `MANAGER` | Công bố sự kiện mở bán (`DRAFT` → `PUBLISHED`) |
+| **F01** | `POST` | `/api/admin/events/:id/close` | `MANAGER` | Đóng bán vé sự kiện (`PUBLISHED` → `CLOSED`) |
+| **F02** | `POST` | `/api/admin/events/:id/showings` | `MANAGER` | Thêm suất diễn mới cho sự kiện |
+| **F02** | `DELETE` | `/api/admin/showings/:id` | `MANAGER` | Xóa suất diễn thuộc sự kiện nháp |
+| **F02** | `POST` | `/api/admin/showings/:id/ticket-types` | `MANAGER` | Cấu hình loại vé, đơn giá và số lượng phát hành |
+| **F02** | `DELETE` | `/api/admin/ticket-types/:id` | `MANAGER` | Xóa loại vé thuộc sự kiện nháp |
+| **F04** | `POST` | `/api/reservations` | `USER` | Tạo phiếu giữ vé tạm thời (TTL 300 giây trên Redis) |
+| **F04** | `GET` | `/api/reservations/:id` | `USER` | Tra cứu trạng thái phiếu giữ và thời gian còn lại |
+| **F05** | `POST` | `/api/bookings/confirm` | `USER` | **Xác nhận đặt vé qua ACID Transaction** |
+| **F05** | `POST` | `/api/bookings/:id/cancel` | `USER` | Hủy đơn hàng hợp lệ trước giờ biểu diễn |
+| **F06** | `GET` | `/api/bookings/my` | `USER` | Tra cứu danh sách đơn hàng đã đặt của cá nhân |
+| **F06** | `GET` | `/api/bookings/:id` | `USER` | Xem chi tiết đơn hàng và danh sách mã vé điện tử |
+| **F07** | `GET` | `/api/admin/reports/bookings` | `MANAGER` | Báo cáo doanh thu, vé bán và phân tích hiệu suất |
+| **F08** | `POST` | `/api/bookings/:id/send-email` | `USER` / Hệ thống | Gửi email thông báo mã vé điện tử cho khách hàng |
 
 ---
-
-## Phân công
- 
-| Chủ đề | Thành viên | Phạm vi & UI Demo |
-|---|---|---|
-| Storage & Management | Thành viên 1 | F01, F02, F03; mô hình dữ liệu; UI quản lý sự kiện/buổi/loại vé |
-| Transaction | Thành viên 2 | F05, F06; xác nhận và hủy đặt vé; UI đặt vé/chi tiết đơn |
-| Concurrency | Thành viên 3 | F04, F07; giữ vé tạm thời và thống kê; UI giữ vé/báo cáo |
-
-Chi tiết phân công tại [`docs/ba/00-product-scope.md §8`](docs/ba/00-product-scope.md).

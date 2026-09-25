@@ -1,106 +1,127 @@
 # Phạm vi sản phẩm
 
-Mã tài liệu: ETS-SCOPE | Phiên bản: 1.0 | Ngày: 2026-09-21
+Mã tài liệu: ETS-SCOPE | Phiên bản: 1.1 | Ngày: 2026-09-25
 
 ## 1. Mục tiêu
 
-Hệ thống cho phép người quản lý công bố sự kiện, thiết lập các buổi tổ chức và phân phối vé theo loại. Khách hàng tìm sự kiện, chọn buổi, giữ số lượng vé trong thời gian giới hạn và xác nhận đặt vé.
+Hệ thống cho phép người quản lý công bố sự kiện, thiết lập các buổi tổ chức và phân phối vé theo loại. Khách hàng tìm kiếm sự kiện, chọn buổi, giữ vé trong thời gian giới hạn, xác nhận đặt vé (Booking Confirmation qua giao dịch CSDL nội bộ) và nhận email thông báo chứa mã vé điện tử để tham gia sự kiện.
 
-Ba mục tiêu nghiệp vụ:
+Dự án được xây dựng dưới dạng Web Application theo kiến trúc Client-Server / N-tier, tương tác thời gian thực thông qua hệ thống RESTful API kết hợp cơ sở dữ liệu quan hệ MySQL và cơ sở dữ liệu in-memory Redis.
 
-1. Thông tin sự kiện, lịch tổ chức và loại vé được quản lý nhất quán.
-2. Số lượng được giữ và xác nhận không vượt số lượng phát hành.
-3. Đơn hàng và vé có lịch sử tra cứu, các thao tác hết hạn, hủy và gửi lại yêu cầu không làm sai tồn vé.
+Bốn mục tiêu nghiệp vụ trọng tâm:
 
-Sản phẩm tham chiếu trải nghiệm đặt vé sự kiện của Ticketbox. Phạm vi không bao gồm sao chép thương hiệu, tích hợp nền tảng Ticketbox hoặc áp dụng nguyên trạng chính sách thương mại của bên thứ ba.
+1. **Quản lý danh mục nhất quán:** Thông tin sự kiện, lịch tổ chức, địa điểm và các hạng vé được lưu trữ toàn vẹn, phân quyền quản trị rõ ràng.
+2. **Kiểm soát sức chứa tuyệt đối (Concurrency & Storage):** Số lượng vé được giữ và bán không bao giờ vượt quá sức chứa phát hành, triệt tiêu hiện tượng overselling.
+3. **Giao dịch tin cậy (ACID Transaction):** Đơn hàng, chi tiết đơn và các mã vé điện tử được phát hành nhất quán trong một transaction duy nhất, hỗ trợ hủy đơn an toàn trước giờ diễn.
+4. **Trải nghiệm khách hàng khép kín (Post-Transaction Notification):** Sau khi hoàn tất giao dịch đặt vé, hệ thống tự động gửi email xác nhận chứa đầy đủ thông tin đơn hàng và mã vé điện tử cho khách hàng.
 
-## 2. Đối tượng sử dụng
+## 2. Đối tượng sử dụng và Phân quyền
 
-| Tác nhân | Trách nhiệm và nhu cầu |
+Hệ thống áp dụng cơ chế xác thực danh tính (Authentication qua JWT và Bcrypt) kết hợp phân quyền dựa trên vai trò (Role-Based Access Control - RBAC) chặt chẽ:
+
+| Vai trò (Role) | Trách nhiệm và quyền hạn |
 | --- | --- |
-| Khách hàng | Tìm sự kiện, chọn buổi/loại vé, giữ vé, xác nhận đặt, xem đơn và hủy đơn của mình |
-| Người quản lý | Quản lý danh mục sự kiện/buổi/loại vé, công bố/đóng bán, theo dõi số vé xác nhận và giá trị đơn |
-| Nhóm thực hiện | Phát triển, kiểm thử, nghiên cứu và so sánh ba chủ đề trên MySQL và Redis |
+| **USER** (Khách hàng) | Đăng nhập/Đăng xuất; tìm kiếm và xem sự kiện thời gian thực; giữ vé tạm thời; xác nhận đặt vé; nhận email mã vé điện tử; tra cứu lịch sử đơn và hủy đơn hàng hợp lệ thuộc quyền sở hữu của mình |
+| **MANAGER** (Người quản lý) | Đăng nhập tài khoản quản trị, tạo, sửa, xóa nháp sự kiện cấu hình buổi tổ chức và loại vé, công bố sự kiện (`PUBLISHED`) hoặc đóng bán (`CLOSED`); theo dõi báo cáo thống kê doanh thu và phân tích tồn vé |
 
-Phiên bản 1.0 chạy trong môi trường trình diễn local với khách hàng mẫu và khu vực quản lý nội bộ. Danh tính được mô phỏng qua phiên demo do backend quản lý. Không triển khai đăng ký, mật khẩu, khôi phục tài khoản hoặc phân quyền production. Việc đổi khách mẫu phục vụ kiểm thử, không được trình bày như một cơ chế xác thực an toàn.
+Quy định bảo mật phiên & Đăng nhập:
+- Khách hàng mang vai trò `USER` bị từ chối truy cập (HTTP `403 Forbidden`) vào tất cả các tài nguyên quản trị `/api/admin/*`.
+- Token JWT được kiểm tra ở middleware backend, mọi thao tác đặt vé, tra cứu đơn hay gửi lại email đều trích xuất định danh khách hàng từ token hợp lệ, không tin cậy `user_id` do client tự gửi.
+- **Không hỗ trợ Quick Demo:** Mọi người dùng bắt buộc phải đăng nhập qua form chuẩn với tài khoản và mật khẩu cụ thể, không hỗ trợ nút bấm đăng nhập nhanh hay cơ chế bypass xác thực.
 
-Các API tra cứu, xác nhận và hủy vẫn phải kiểm tra chủ sở hữu theo phiên demo; không tin customer_id do client tự gửi trong request nghiệp vụ. Việc triển khai cho người dùng thật phải bổ sung xác thực và kiểm soát quyền trước khi mở truy cập.
+## 3. Phạm vi chức năng (8 Chức năng nghiệp vụ)
 
-## 3. Phạm vi chức năng
+Hệ thống cung cấp **8 chức năng nghiệp vụ (F01 - F08)**:
 
-| Mã | Nhóm chức năng | Kết quả cần cung cấp |
-| --- | --- | --- |
-| F01 | Quản lý sự kiện | Danh mục sự kiện, nội dung, thể loại và vòng đời công bố/đóng bán |
-| F02 | Quản lý buổi tổ chức và loại vé | Địa điểm, lịch tổ chức/lịch bán, loại vé, giá và số lượng phát hành |
-| F03 | Tìm kiếm và xem sự kiện | Danh sách có bộ lọc, phân trang, chi tiết buổi và tình trạng bán vé |
-| F04 | Giữ vé tạm thời | Phiếu giữ có chủ sở hữu, số lượng, giá và thời điểm hết hạn |
-| F05 | Xác nhận và hủy đặt vé | Đơn nhất quán, xử lý gửi lại, giải phóng tồn vé khi hủy hợp lệ |
-| F06 | Tra cứu đơn và vé | Lịch sử đơn, giá chốt, mã vé và tình trạng hiệu lực |
-| F07 | Thống kê | Số vé đã xác nhận, tổng giá trị đơn và các buổi chưa có đơn xác nhận |
-
-Mỗi sự kiện có thể có nhiều buổi. Vé được bán theo loại và số lượng; không gắn ghế đánh số. Một đơn chỉ thuộc một buổi tổ chức.
+| Mã | Nhóm chức năng | Kết quả cung cấp | Vai trò |
+| --- | --- | --- | --- |
+| F01 | Quản lý sự kiện | Danh mục sự kiện, mô tả, thể loại và vòng đời trạng thái (`DRAFT` -> `PUBLISHED` -> `CLOSED`) | `MANAGER` |
+| F02 | Quản lý buổi tổ chức và loại vé | Địa điểm, thành phố, lịch biểu diễn/mở bán, các hạng vé, đơn giá VND và sức chứa (`capacity`) | `MANAGER` |
+| F03 | Tìm kiếm và xem sự kiện | Khám phá sự kiện theo từ khóa, thể loại, thành phố; xem chi tiết suất diễn và tính tồn vé khả dụng thời gian thực | Công khai / `USER` |
+| F04 | Giữ vé tạm thời | Cấp phiếu giữ chỗ có thời hạn (TTL 300s), kiểm tra tồn khả dụng, chống trùng lặp yêu cầu | `USER` |
+| F05 | Xác nhận và hủy đặt vé | Thực thi giao dịch ACID: chốt đơn, sinh mã vé điện tử, giải phóng giữ vé, xử lý hủy đơn hợp lệ trước giờ diễn | `USER` |
+| F06 | Tra cứu đơn và vé | Xem lịch sử các đơn hàng đã đặt, trạng thái đơn, chi tiết hạng vé và danh sách mã vé cá nhân | `USER` |
+| F07 | Thống kê và báo cáo | Báo cáo tổng số vé xác nhận, tổng doanh thu, lọc theo sự kiện/buổi và truy vấn buổi chưa phát sinh đơn | `MANAGER` |
+| F08 | Thông báo & Gửi vé qua Email | Tự động gửi email xác nhận kèm danh sách mã vé điện tử duy nhất cho khách hàng ngay khi hoàn tất giao dịch; hỗ trợ gửi lại email từ lịch sử đơn hàng | `USER` / Hệ thống |
 
 ## 4. Luồng nghiệp vụ chính
 
-Tìm sự kiện -> xem chi tiết -> chọn buổi -> chọn loại vé và số lượng -> giữ vé -> kiểm tra thông tin đặt -> xác nhận -> nhận mã đơn và mã vé.
-
-Khách có thể bỏ phiếu giữ trước khi xác nhận. Phiếu giữ tự mất hiệu lực khi hết thời gian. Sau xác nhận, khách được hủy toàn bộ đơn trước giờ bắt đầu buổi tổ chức.
-
-Việc xác nhận trong phiên bản 1.0 không phát sinh giao dịch tài chính. Giao diện sử dụng “Đặt vé thành công” và “Giá trị đơn”, không sử dụng “Đã thanh toán” hoặc “Doanh thu đã thu”.
+1. Khách hàng tìm kiếm sự kiện -> Xem chi tiết suất diễn và tồn vé khả dụng (F03).
+2. Chọn loại vé và số lượng (1 đến 6 vé) -> Hệ thống cấp phiếu giữ vé tạm thời (F04, TTL 300 giây).
+3. Kiểm tra thông tin đơn vé -> Xác nhận đặt vé (F05 - ACID Transaction nội bộ trong CSDL).
+4. Hệ thống ghi nhận đơn hàng `CONFIRMED`, phát hành các mã vé điện tử duy nhất (F05) -> **Tự động gửi email xác nhận kèm danh sách mã vé điện tử cho khách hàng (F08)**.
+5. Khách hàng có thể tra cứu lại đơn hàng và danh sách vé bất cứ lúc nào trong mục lịch sử đơn (F06), hoặc bấm nút "Gửi lại email mã vé" nếu cần.
+6. Trường hợp không thể tham gia, khách hàng có quyền hủy toàn bộ đơn trước giờ bắt đầu suất diễn (F05).
 
 ## 5. Tham số và giới hạn phiên bản
 
 | Nội dung | Quy định |
 | --- | --- |
-| Thời gian giữ | Tối đa 300 giây, không vượt thời điểm ngừng bán của buổi |
-| Số vé mỗi phiếu giữ/đơn | Từ 1 đến 6, tính tổng tất cả loại vé |
-| Phạm vi đơn | Một khách, một buổi, một hoặc nhiều loại vé |
-| Hủy đơn | Toàn bộ đơn, trước giờ bắt đầu; không hủy từng vé |
-| Giá tiền | VND nguyên, từ 0 đến 1.000.000.000 cho một vé |
-| Cấu hình sự kiện | Chỉ sửa nội dung, buổi, giá và số lượng khi còn DRAFT |
-| Lưu lịch sử | Không xóa phiếu giữ, đơn hoặc vé đã phát sinh để thay cho thao tác đổi trạng thái |
+| Thời gian giữ vé (Hold TTL) | Tối đa 300 giây, không vượt quá thời điểm ngừng bán của buổi |
+| Số vé mỗi đơn | Từ 1 đến 6 vé (tính tổng các loại vé trong một lần đặt) |
+| Phạm vi một đơn | Thuộc đúng một khách hàng và một buổi tổ chức cụ thể |
+| Hủy đơn hàng | Cho phép hủy toàn bộ đơn trước thời điểm bắt đầu biểu diễn; không hủy từng vé lẻ |
+| Đơn vị tiền tệ | Việt Nam Đồng (VND), số nguyên từ 0 đến 1.000.000.000 VND (phục vụ định giá và thống kê nội bộ) |
+| Vòng đời cấu hình | Chỉ sửa thông tin sự kiện, buổi, vé khi ở trạng thái `DRAFT` |
+| Toàn vẹn lịch sử | Không xóa cứng bản ghi đơn hàng hay vé đã phát sinh; lưu vết trạng thái rõ ràng |
+| Gửi email mã vé | Thực hiện bất đồng bộ sau khi giao dịch MySQL đã commit; lỗi gửi mail không làm rollback đơn hàng |
 
-Các tham số trên là quy định của phiên bản 1.0, không phải chính sách của Ticketbox.
+## 6. Ngoài phạm vi (Out of Scope)
 
-## 6. Ngoài phạm vi
-
-- Thanh toán hoặc hoàn tiền thật; hóa đơn tài chính.
-- Sơ đồ ghế, hủy từng vé, chuyển nhượng hoặc bán lại vé.
-- QR check-in, email/SMS tự động.
-- Voucher, khuyến mãi, chương trình thành viên.
-- Nhiều nhà tổ chức tự đăng ký, xét duyệt và đối soát.
-- Hàng chờ phân tán, Redis Cluster, failover và triển khai production.
-
-Lỗi giữa các bước đặt vé, tranh chấp tồn vé, gửi lại yêu cầu và Redis gián đoạn vẫn thuộc phạm vi kiểm thử. Đây là các điều kiện trực tiếp ảnh hưởng tính đúng đắn của dữ liệu, không phải tính năng mở rộng.
+- **Giao dịch tiền tệ bên thứ ba / Ngân hàng:** Hệ thống KHÔNG hỗ trợ kết nối tới bất kỳ cổng thanh toán ngân hàng, ví điện tử hay dịch vụ tài chính bên thứ 3 nào (như VNPAY, MoMo, ZaloPay, VietQR, Stripe, PayPal...). Toàn bộ quy trình đặt vé và ghi nhận đơn hàng là giao dịch cơ sở dữ liệu nội bộ (Internal DBMS Transaction). Giá trị `total_amount_vnd` chỉ phục vụ mục đích tính toán giá trị đơn vé và báo cáo thống kê doanh thu nội bộ của đồ án.
+- **Không hỗ trợ Quick Demo / Bypass:** Quá trình truy cập hệ thống bắt buộc phải đăng nhập bằng thông tin tài khoản hợp lệ (`username` và `password`), không cung cấp nút bấm đăng nhập tắt hay cơ chế tự động điền vượt qua xác thực.
+- Sơ đồ chọn chỗ ngồi đánh số (Seat map) — bán vé theo hạng vé và số lượng (General Admission / Tiered Capacity).
+- Cổng soát vé phần cứng, máy quét barcode/QR tại cửa hội trường.
+- Tổng đài tin nhắn SMS Brandname trả phí.
 
 ## 7. Kiến trúc và trách nhiệm dữ liệu
 
-Node.js (Express) cung cấp hệ thống REST API và xử lý các quy tắc kiểm tra nghiệp vụ. Giao diện chính của dự án là trang web tĩnh đơn giản giới thiệu Đồ án môn Cơ sở dữ liệu (DBMS). Phần giao diện (UI) phục vụ thao tác nghiệp vụ và thực nghiệm demo do từng thành viên tự thiết kế, xây dựng độc lập theo phân công.
+Hệ thống được thiết kế theo mô hình **Kiến trúc phân tầng hiện đại (N-tier Architecture)**:
 
-MySQL 8.x đóng vai trò cơ sở dữ liệu chính, lưu trữ danh mục sự kiện, buổi tổ chức, loại vé, phiếu giữ, đơn hàng và vé. Redis 7.x cung cấp bản đọc nhanh của phiếu giữ và quản lý thời hạn (TTL); dữ liệu này có thể tái tạo hoàn toàn từ MySQL khi cần thiết.
+```
+┌────────────────────────────────────────────────────────┐
+│             Frontend: React 19 SPA (Vite)              │
+│    UI Khám phá, Đặt vé, Quản trị Manager, AuthContext  │
+└───────────────────────────┬────────────────────────────┘
+                            │ HTTP / RESTful API (JSON)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│             Backend: Node.js (Express 5)               │
+│   Auth & RBAC Middleware, Controllers, Error Handler   │
+└───────────────┬────────────────────────┬───────────────┘
+                │                        │
+       SQL Queries / Pool           In-memory Cache
+                ▼                        ▼
+┌──────────────────────────────┐ ┌───────────────────────┐
+│     MySQL 8.0 (InnoDB)       │ │      Redis 7.0        │
+│ CSDL chính, Khóa ngoại, CHECK│ │ Bộ đệm giữ vé nhanh,  │
+│  Transactions, ACID, Storage │ │ Quản lý TTL 300s      │
+└──────────────────────────────┘ └───────────────────────┘
+```
 
-Phiếu giữ và tồn vé không phụ thuộc duy nhất vào việc một key Redis còn tồn tại. Khi Redis không sẵn sàng, backend đối chiếu trực tiếp với MySQL; không tạo phiếu giữ hoặc đơn hàng chỉ tồn tại trong Redis. Cách phân định này tránh tình trạng hai nguồn cùng quyết định một số lượng vé.
+- **Frontend (React 19 + Vite):** Ứng dụng Single Page Application hiện đại, chia thành các module giao diện độc lập: Khám phá sự kiện (F03), Quản trị sự kiện & suất diễn (F01, F02), Giữ vé & Đặt vé (F04, F05), Lịch sử đơn & Email (F06, F08) và Báo cáo (F07).
+- **Backend (Node.js + Express):** Điều phối toàn bộ nghiệp vụ, xác thực JWT, kiểm tra ràng buộc thời gian thực, đảm bảo transaction và kích hoạt dịch vụ gửi email sau giao dịch.
+- **MySQL 8.0 (InnoDB):** Nguồn dữ liệu tin cậy tối cao (Single Source of Truth), quản lý người dùng, sự kiện, đơn vé, lịch sử và đảm bảo tính toàn vẹn khóa ngoại (Composite Foreign Keys).
+- **Redis 7.0:** Tăng tốc độ đọc phiếu giữ vé và quản lý hết hạn tự động qua TTL (Time-To-Live).
 
-Ngoài ứng dụng tích hợp, mỗi chủ đề có bộ thực nghiệm độc lập trên MySQL và Redis. Trong thực nghiệm Redis, dữ liệu được lưu và thao tác trực tiếp trên Redis, không gọi MySQL thay cho phần cần so sánh. Môi trường database chạy cục bộ (local); cấu hình và dữ liệu lab tách biệt khỏi dữ liệu ứng dụng.
+## 8. Khả năng vận hành trên Cloud DBMS & Vai trò bộ script SQL
 
-## 8. Phân công
+Hệ thống EventBox được thiết kế độc lập với hạ tầng vật lý (Cloud-agnostic):
+- **Vận hành trên máy cục bộ (Localhost):** Sử dụng MySQL 8.0 và Redis 7.0 cài qua Homebrew / Docker / System Service.
+- **Vận hành trên nền tảng Đám mây (Cloud Managed DBMS):** Tương thích hoàn toàn với các dịch vụ Database Cloud phổ biến (như **Aiven MySQL, AWS RDS, GCP Cloud SQL, TiDB Cloud, Railway, Clever Cloud** và **Upstash Redis**).
 
-| Phần việc | Chủ trì | Phối hợp |
+### Vai trò của các file SQL khi triển khai Cloud / Local:
+Dù vận hành trên Localhost hay Cloud (Aiven MySQL, AWS RDS, TiDB Cloud, Railway...):
+1. **Dịch vụ Cloud chỉ cấp máy chủ rỗng (Empty Instance):** Nền tảng Cloud chỉ cung cấp địa chỉ kết nối và một database rỗng chưa có bất kỳ bảng nào.
+2. **File SQL DDL (`migrations/001_init_schema.sql`) dùng để khởi tạo schema:** Định nghĩa cấu trúc 9 bảng quan hệ, các ràng buộc toàn vẹn quan trọng (`CHECK constraints`, khóa ngoại phức hợp), khóa chính và các chỉ mục. Hiện tại nhóm chưa tạo các file SQL này mà lưu trữ toàn bộ đặc tả trong tài liệu thiết kế CSDL (`docs/database-design.md`) trước khi chuyển giao sang DDL.
+3. **File SQL DML (`seeds/001_seed_fixture.sql`) cung cấp dữ liệu Demo:** Khởi tạo tài khoản `manager01`, `user01`, các sự kiện mẫu, suất diễn và loại vé để hội đồng chấm thi có thể thực nghiệm ngay.
+4. **Tiêu chuẩn học thuật & Infrastructure as Code (IaC):** Bộ file SQL là bằng chứng nộp bài đánh giá năng lực thiết kế CSDL của nhóm, đồng thời đảm bảo khả năng tái tạo hệ thống trên bất kỳ Cloud nào chỉ trong vài giây.
+
+## 9. Phân công trách nhiệm 3 thành viên
+
+| Thành viên | Chủ đề DBMS | Chức năng nghiệp vụ & Phạm vi phụ trách |
 | --- | --- | --- |
-| F01, F02, F03; mô hình dữ liệu chung; thực nghiệm Storage | Thành viên 1 - Data Storage & Management | Hai thành viên còn lại rà soát dữ liệu phục vụ giữ/đặt/hủy |
-| F05, F06; thực nghiệm Transaction | Thành viên 2 - Transaction | Thành viên 3 tích hợp chuyển phiếu giữ thành đơn |
-| F04, F07; thực nghiệm Concurrency | Thành viên 3 - Concurrency | Thành viên 2 xử lý các chuyển trạng thái có tranh chấp |
-| Kiểm thử tích hợp, báo cáo chung, demo cuối | Cả nhóm | Mỗi người chịu trách nhiệm bằng chứng và UI demo phần mình |
+| **Thành viên 1** | **Data Storage & Management** | • **F01**: Quản lý vòng đời sự kiện (`DRAFT`, `PUBLISHED`, `CLOSED`)<br>• **F02**: Quản lý buổi tổ chức & cơ cấu loại vé<br>• **F03**: Khám phá sự kiện & tính toán tồn vé động thời gian thực<br>• Thiết kế cấu trúc CSDL quan hệ, migrations DDL, seeds DML, Auth & RBAC nền tảng<br>• Màn hình Quản trị Sự kiện & Suất diễn (`MANAGER`) và Khám phá (`USER`) |
+| **Thành viên 2** | **Transaction** | • **F05**: Xác nhận đặt vé (ACID Transaction) và xử lý hủy đơn an toàn (giao dịch nội bộ DBMS, không hỗ trợ thanh toán ngân hàng bên thứ 3)<br>• **F06**: Quản lý và tra cứu lịch sử đơn hàng, chi tiết vé<br>• **F08**: **Thông báo & Gửi vé điện tử qua Email sau giao dịch**<br>• Nghiên cứu Isolation Levels, Rollback/Commit và tính nhất quán đơn hàng<br>• Màn hình Xác nhận đặt vé, Lịch sử đơn hàng và Gửi lại email vé |
+| **Thành viên 3** | **Concurrency** | • **F04**: Giữ vé tạm thời với cơ chế khóa lạc quan / TTL Redis<br>• **F07**: Thống kê báo cáo doanh thu & phân tích tồn vé<br>• Nghiên cứu hiện tượng Race Condition, Overselling và xử lý tranh chấp vé đồng thời<br>• Màn hình Giữ vé tạm thời và Dashboard Báo cáo thống kê (`MANAGER`) |
 
-Mỗi thành viên tự triển khai API, phần UI demo riêng, kiểm thử và tài liệu trong phạm vi được giao. Migration và hợp đồng API dùng chung phải được rà soát trước khi tích hợp.
-
-## 9. Điều kiện hoàn thành
-
-- Bảy nhóm chức năng đáp ứng tiêu chí nghiệm thu.
-- Tám loại thao tác/truy vấn có chức năng ứng dụng tương ứng.
-- Storage, Transaction và Concurrency đều có demo trên hai DBMS, bảng kết quả và kết luận.
-- Không bán vượt số lượng; không tạo đơn trùng khi gửi lại; không hoàn tồn hai lần.
-- Thành viên khác chạy được dự án và các demo bằng tài liệu bàn giao.
-- Báo cáo PDF, source, hướng dẫn, bằng chứng và phân công được đóng gói để nộp theo đề.
-
-Việc hoàn thành được xác nhận bằng kết quả kiểm thử, không bằng số lượng bảng, endpoint hoặc màn hình đã tạo.

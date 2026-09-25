@@ -145,12 +145,6 @@ function Navbar({ apiStatus }) {
         ))}
       </div>
       <div className="nav-right">
-        {apiStatus && (
-          <div className="status-indicator" title={`API: ${apiStatus}`}>
-            <span className={`status-dot ${apiStatus === 'up' ? 'up' : 'down'}`} />
-            {apiStatus === 'up' ? 'Hệ thống OK' : 'Đang kết nối'}
-          </div>
-        )}
         <button className="btn-ghost">Đăng nhập</button>
         <button className="btn-primary">Tạo tài khoản</button>
       </div>
@@ -191,7 +185,6 @@ export default function HomePage() {
       {/* ── Hero ── */}
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-inner">
-          <div className="hero-tag"><span />Nền tảng đặt vé hàng đầu</div>
           <h1 id="hero-title">Khám phá sự kiện<br />dành cho <em>bạn.</em></h1>
           <p className="hero-sub">Hàng nghìn sự kiện âm nhạc, thể thao, nghệ thuật và công nghệ đang chờ bạn. Đặt vé dễ dàng, nhanh chóng và an toàn.</p>
           <div className="hero-actions">
@@ -201,12 +194,7 @@ export default function HomePage() {
             <a className="btn-hero btn-hero-outline" href="#featured">
               <Icon name="star" /> Nổi bật tuần này
             </a>
-          </div>
-          <div className="hero-stats" aria-label="Thống kê nền tảng">
-            <div className="hero-stat"><strong>500+</strong><span>Sự kiện mỗi tháng</span></div>
-            <div className="hero-stat"><strong>200K+</strong><span>Khách hàng tin dùng</span></div>
-            <div className="hero-stat"><strong>50+</strong><span>Tỉnh thành toàn quốc</span></div>
-          </div>
+          </div>  
         </div>
       </section>
 
@@ -281,7 +269,7 @@ export default function HomePage() {
               <h2>Tạo tài khoản — Đặt vé ngay</h2>
               <p>Nhận thông báo sự kiện mới nhất, ưu đãi độc quyền và quản lý vé của bạn dễ dàng hơn bao giờ hết.</p>
             </div>
-            <button className="btn-promo">Bắt đầu miễn phí →</button>
+            <button className="btn-promo">Đặt vé ngay →</button>
           </div>
         )}
 
@@ -326,7 +314,7 @@ export default function HomePage() {
                 </svg>
                 EventBox
               </div>
-              <p className="footer-desc">Nền tảng đặt vé sự kiện trực tuyến — Dự án đồ án môn Cơ sở dữ liệu, học kỳ HK261.</p>
+              <p className="footer-desc">Web app đặt vé sự kiện trực tuyến — BTL môn Hệ quản trị Cơ sở dữ liệu HK261.</p>
             </div>
             <div className="footer-col">
               <h4>KHÁM PHÁ</h4>
@@ -357,10 +345,6 @@ export default function HomePage() {
           <div className="footer-bottom">
             <span>© 2026 EventBox · Đồ án DBMS · React + Node.js + MySQL + Redis</span>
             <div className="footer-badges">
-              <span className="footer-badge">React</span>
-              <span className="footer-badge">Node.js</span>
-              <span className="footer-badge">MySQL</span>
-              <span className="footer-badge">Redis</span>
             </div>
           </div>
         </div>

@@ -167,7 +167,7 @@ Nguyên tắc phản hồi trên các giao diện demo:
 
 ## 6. Hợp đồng API mức nghiệp vụ
 
-Các endpoint sau thuộc thiết kế phiên bản 1.0; chưa phải danh sách chức năng đã lập trình. Tiền tố /admin không tự cung cấp cơ chế phân quyền.
+Các endpoint sau thuộc thiết kế phiên bản 1.0, chưa phải danh sách chức năng đã lập trình. Tiền tố /admin không tự cung cấp cơ chế phân quyền.
 
 | Method | Endpoint | Trách nhiệm |
 | --- | --- | --- |

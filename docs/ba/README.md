@@ -1,53 +1,59 @@
-# Đặc tả nghiệp vụ hệ thống đặt vé sự kiện
+# Đặc tả nghiệp vụ hệ thống đặt vé sự kiện EventBox
 
 | Thuộc tính | Nội dung |
 | --- | --- |
 | Mã tài liệu | ETS-BA |
-| Phiên bản | 1.0 |
-| Ngày phát hành | 2026-09-21 |
+| Phiên bản | 1.1 |
+| Ngày phát hành | 2026-09-25 |
 | Phạm vi | Đồ án DBMS, nhóm 3 thành viên |
-| Trạng thái | Đặc tả làm cơ sở thiết kế, phát triển và nghiệm thu |
+| Kiến trúc | Ứng dụng Web hiện đại (Client-Server / N-tier: React 19 SPA + Express API + MySQL 8.0 + Redis 7.0) |
+| Trạng thái | Đặc tả nghiệp vụ chính thức làm cơ sở thiết kế CSDL, phát triển API, giao diện và nghiệm thu |
 
 ## 1. Mục đích
 
-Bộ tài liệu xác định yêu cầu của hệ thống đặt vé sự kiện theo buổi tổ chức, loại vé và số lượng. Hệ thống phục vụ hai nhóm sử dụng: khách đặt vé và người quản lý sự kiện.
+Bộ tài liệu xác định yêu cầu nghiệp vụ của hệ thống đặt vé sự kiện **EventBox** theo buổi tổ chức, loại vé và số lượng. 
 
-Phiên bản 1.0 thay thế các bản 0.x theo mô hình ghế đánh số. Các mã chức năng, quy tắc và kiểm thử trong phiên bản này là căn cứ thống nhất khi triển khai. Tài liệu không xác nhận tính năng đã được lập trình hoặc kiểm thử thành công.
+Khác với các trang web tĩnh thông thường, **EventBox là một ứng dụng web hiện đại (Modern Full-Stack Web Application)** hoạt động tương tác thời gian thực, giao tiếp qua RESTful API, quản lý trạng thái động và lưu trữ dữ liệu bền vững trên hai hệ quản trị CSDL: **MySQL 8.0 (InnoDB)** và **Redis 7.0 (In-memory)**.
+
+Hệ thống hỗ trợ cơ chế xác thực và phân quyền người dùng (Role-Based Access Control - RBAC):
+- **`USER` (Khách hàng):** Đăng nhập, tìm kiếm sự kiện, giữ vé tạm thời, xác nhận đơn hàng, nhận email vé điện tử tự động và quản lý lịch sử đơn của mình.
+- **`MANAGER` (Quản lý hệ thống):** Đăng nhập, quản lý vòng đời sự kiện, cấu hình buổi tổ chức, loại vé, đóng bán và theo dõi báo cáo thống kê doanh thu/tồn vé.
 
 ## 2. Danh mục tài liệu
 
 | Tài liệu | Nội dung |
 | --- | --- |
-| [Phạm vi sản phẩm](00-product-scope.md) | Mục tiêu, đối tượng sử dụng, giới hạn phiên bản và phân công |
-| [Yêu cầu nghiệp vụ](01-requirements.md) | Quy tắc, luồng xử lý, chức năng, giao diện và tiêu chí nghiệm thu |
-| [Đặc tả dữ liệu](02-data-model.md) | Mô hình logic, từ điển dữ liệu, tính toàn vẹn và trách nhiệm MySQL/Redis |
-| [Kế hoạch kiểm thử và thực nghiệm](03-demo-acceptance.md) | Dữ liệu mẫu, kiểm thử chức năng, nghiên cứu hai DBMS và đối chiếu đề bài |
+| [Phạm vi sản phẩm](00-product-scope.md) | Mục tiêu, đối tượng sử dụng, phân quyền RBAC, phạm vi F01-F08 và phân công |
+| [Yêu cầu nghiệp vụ](01-requirements.md) | Quy tắc nghiệp vụ (BR), luồng xử lý, tiêu chí nghiệm thu (AC), giao diện và API skeleton |
+| [Đặc tả dữ liệu](02-data-model.md) | Mô hình thực thể (ERD), từ điển dữ liệu (`users`, `events`, `bookings`...), tính toàn vẹn và cơ chế gửi email |
+| [Kế hoạch kiểm thử và thực nghiệm](03-demo-acceptance.md) | Dữ liệu mẫu (fixture), kịch bản kiểm thử chức năng, thực nghiệm DBMS và đối chiếu đề bài |
+| [Thiết kế & Mô tả CSDL](../database-design.md) | **Tài liệu Thiết kế & Mô tả CSDL chi tiết**: Chuẩn hóa 3NF/BCNF, từ điển 9 bảng, ràng buộc toàn vẹn, chỉ mục và kiến trúc Cloud DBMS |
 
-Yêu cầu nghiệp vụ quy định hành vi hệ thống. Đặc tả dữ liệu quy định thông tin phải được lưu và các điều kiện toàn vẹn. Kế hoạch kiểm thử quy định bằng chứng cần có trước nghiệm thu. Trường hợp phát hiện mâu thuẫn, phải cập nhật đồng bộ các tài liệu trước khi phát hành thay đổi.
+## 3. Quy ước hệ thống
 
-## 3. Quy ước
+- **Fxx**: Nhóm chức năng nghiệp vụ (F01 đến F08).
+- **BR-xx**: Quy tắc nghiệp vụ (Business Rules).
+- **AC-xx**: Tiêu chí nghiệm thu chức năng (Acceptance Criteria).
+- **NFR-xx**: Yêu cầu phi chức năng (Non-Functional Requirements).
+- **TC-xx**: Ca kiểm thử chức năng hoặc tích hợp (Test Cases).
+- **DMS-xx, TRX-xx, CC-xx**: Thực nghiệm Storage, Transaction, Concurrency.
+- **Qxx**: Truy vấn CSDL cốt lõi theo đề bài.
+- **Vai trò người dùng**: `USER` (khách hàng cá nhân), `MANAGER` (quản trị viên danh mục & báo cáo).
 
-- Fxx: nhóm chức năng.
-- BR-xx: quy tắc nghiệp vụ.
-- AC-xx: tiêu chí nghiệm thu.
-- NFR-xx: yêu cầu chất lượng.
-- TC-xx: ca kiểm thử chức năng hoặc tích hợp.
-- DMS-xx, TRX-xx, CC-xx: thực nghiệm Storage, Transaction, Concurrency.
-- Qxx: loại thao tác/truy vấn bắt buộc trong đề bài.
+Mọi thao tác dữ liệu được thực thi thông qua REST API có kiểm tra quyền hạn và phiên làm việc (JWT). Đăng nhập được thực hiện qua biểu mẫu chuẩn bằng thông tin tài khoản hợp lệ, không hỗ trợ cơ chế đăng nhập nhanh (Quick Demo). Hệ thống xử lý toàn bộ luồng nghiệp vụ vé bằng giao dịch nội bộ trong CSDL, hoàn toàn không hỗ trợ giao dịch tiền tệ bên thứ ba hay kết nối cổng thanh toán ngân hàng.
 
-Tên trạng thái và tên trường kỹ thuật dùng tiếng Anh thống nhất. Giao diện chính của dự án là trang web tĩnh giới thiệu Đồ án môn Cơ sở dữ liệu (DBMS). Các giao diện/màn hình chức năng phục vụ demo do từng thành viên tự xây dựng độc lập theo phân công. Thời gian trao đổi và lưu trữ dùng chuẩn UTC; giao diện hiển thị giờ địa phương theo Asia/Ho_Chi_Minh.
+## 4. Quản lý phiên bản
 
-## 4. Quản lý thay đổi
+| Phiên bản | Ngày | Nội dung thay đổi |
+| --- | --- | --- |
+| 0.x | 2026-09-01 | Phân tích ban đầu theo mô hình ghế đánh số |
+| 1.0 | 2026-09-21 | Thống nhất mô hình vé theo loại/số lượng; bổ sung Auth & RBAC |
+| 1.1 | 2026-09-25 | Cập nhật định vị Ứng dụng Web hiện đại (thay thế web tĩnh); bổ sung chức năng **F08: Gửi email mã vé cho khách hàng sau khi hoàn tất giao dịch**; chuẩn hóa API skeleton và cập nhật quy tắc Git nhóm |
+| 1.2 | 2026-09-25 | Làm rõ vai trò bắt buộc của bộ script SQL (DDL schema, DML seeds, DQL queries) khi triển khai trên Cloud Managed DBMS (Aiven, AWS RDS, TiDB, Railway...) theo nguyên tắc Infrastructure as Code và tiêu chí chấm thi DBMS |
 
-Thay đổi liên quan phạm vi, trạng thái, giá, tồn vé, giữ vé hoặc hủy đơn phải ghi rõ lý do, mã yêu cầu bị ảnh hưởng, tác động dữ liệu và ca kiểm thử cần cập nhật. Không thay đổi ý nghĩa trường hoặc trạng thái chỉ trong mã nguồn.
+## 5. Căn cứ đề tài
 
-| Phiên bản | Nội dung |
-| --- | --- |
-| 0.x | Phân tích ban đầu; phương án ghế đánh số và chuyển hướng sang loại vé/số lượng |
-| 1.0 | Thống nhất phạm vi, quy tắc, mô hình dữ liệu và nghiệm thu theo buổi tổ chức/loại vé/số lượng |
-
-## 5. Căn cứ
-
-[Đề bài Assignment_HK261_A01.pdf](../Assignment_HK261_A01.pdf), mục 1.2, 1.3, 2, 3 và 4. Trọng số đánh giá: demonstration 30%, application 30%, cấu trúc báo cáo 10%, nội dung báo cáo 10%, thuyết trình 10%, teamwork 10%.
-
-Bộ BA là đầu vào cho báo cáo kỹ thuật. Báo cáo nộp cuối phải có kết quả thực nghiệm, tài liệu tham khảo, đóng góp từng thành viên và biên bản họp thực tế, không thay kết quả bằng tiêu chí mong đợi.
+Bộ tài liệu bám sát yêu cầu đề bài **Assignment_HK261_A01.pdf**:
+- Ứng dụng kiểu Web application theo kiến trúc Client-Server / N-tier, có khả năng vận hành linh hoạt trên cả môi trường cục bộ (Localhost) và nền tảng đám mây (Cloud Database Services).
+- Đáp ứng tối thiểu $n \ge 2 \times \text{số thành viên} = 6$ chức năng nghiệp vụ của người dùng (không tính đăng nhập/đăng xuất). Hệ thống EventBox hiện thực **8 chức năng nghiệp vụ (F01 - F08)**, vượt yêu cầu tối thiểu.
+- Minh họa 3 chủ đề trọng tâm: **Data Storage & Management** (MySQL), **Transaction** (ACID & Booking Confirmation) và **Concurrency** (Redis TTL Hold & Tranh chấp vé). Bộ script SQL trong `database/mysql/` là tài sản thiết kế kiến trúc bắt buộc dùng để khởi tạo schema trên bất kỳ nền tảng Cloud nào.
