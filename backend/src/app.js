@@ -2,8 +2,6 @@ import cors from 'cors';
 import express from 'express';
 import { mysqlPool, redisClient } from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
-import adminRoutes from './routes/adminRoutes.js';
-import publicRoutes from './routes/publicRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -44,11 +42,8 @@ app.get('/health', async (_request, response) => {
   });
 });
 
-// Các nhóm Router nghiệp vụ (API Skeleton hoàn chỉnh)
-app.use('/api/auth', authRoutes);       // Xác thực, đăng nhập, đăng xuất, lấy thông tin phiên
-app.use('/api/admin', adminRoutes);     // F01, F02, F07: Quản lý sự kiện, buổi, loại vé, báo cáo (MANAGER)
-app.use('/api', publicRoutes);          // F03: Tìm kiếm và xem sự kiện công khai
-app.use('/api', bookingRoutes);         // F04, F05, F06, F08: Giữ vé, đặt vé, lịch sử đơn và email vé
+app.use('/api/auth', authRoutes);
+app.use('/api', bookingRoutes);
 
 // Bắt các route không tồn tại (404)
 app.use((_request, response) => {

@@ -129,7 +129,7 @@ function EventCard({ event }) {
 }
 
 /* ── Navbar ──────────────────────────────────────────── */
-function Navbar({ apiStatus }) {
+function Navbar() {
   return (
     <nav className="navbar" role="navigation" aria-label="Điều hướng chính">
       <a className="nav-brand" href="/" aria-label="EventBox trang chủ">
@@ -145,8 +145,8 @@ function Navbar({ apiStatus }) {
         ))}
       </div>
       <div className="nav-right">
-        <button className="btn-ghost">Đăng nhập</button>
-        <button className="btn-primary">Tạo tài khoản</button>
+        <a className="btn-ghost" href="/my-tickets">Vé của tôi</a>
+        <a className="btn-primary" href="/checkout">Xác nhận vé</a>
       </div>
     </nav>
   )

@@ -6,10 +6,7 @@ Thư mục này dành để lưu trữ các tệp lệnh **Định nghĩa Dữ l
 
 ## 1. Trạng thái Hiện tại của Dự án
 
-> [!NOTE]
-> **Giai đoạn Hiện tại:** Nhóm đang ở giai đoạn **Thiết kế & Mô tả Cơ sở Dữ liệu**. 
-> - Toàn bộ cấu trúc bảng quan hệ, khóa chính (PK), khóa ngoại (FK), ràng buộc kiểm tra (`CHECK constraints`) và các chỉ mục đã được quy định chi tiết tại **[Tài liệu Thiết kế & Mô tả Cơ sở Dữ liệu (docs/database-design.md)](../../../docs/database-design.md)**.
-> - Các file script migration `.sql` chính thức sẽ được sinh mã và lưu tại thư mục này ở giai đoạn tiếp theo của đồ án.
+Migration `001_init_schema.sql` khởi tạo 9 bảng theo tài liệu thiết kế, gồm các chỉ mục và khóa ngoại phức hợp dùng để giữ nhất quán giữa phiếu giữ, suất diễn, đơn hàng và vé. Migration `002_registration_otps.sql` bổ sung vùng lưu OTP đăng ký có thời hạn.
 
 ---
 
@@ -19,7 +16,8 @@ Khi triển khai các file migration, quy ước đặt tên tuân thủ tiền 
 
 ```
 database/mysql/migrations/
-└── 001_init_schema.sql    # Khởi tạo toàn bộ cấu trúc 9 bảng quan hệ và ràng buộc
+└── 001_init_schema.sql    # Khởi tạo 9 bảng, ràng buộc và chỉ mục
+└── 002_registration_otps.sql # Lưu OTP đăng ký tạm thời
 ```
 
 Thứ tự tạo bảng bắt buộc tuân theo mức độ phụ thuộc khóa ngoại (tạo bảng cha trước, bảng con sau):
