@@ -101,7 +101,7 @@ function FeaturedCard({ event }) {
         <div className="fc-price">
           {event.price}<small> đ</small>
         </div>
-        <button className="btn-ticket">Mua vé</button>
+        <a className="btn-ticket" href="/reserve">Mua vé</a>
       </div>
     </div>
   )
@@ -123,6 +123,7 @@ function EventCard({ event }) {
       <div className="ec-footer">
         <div className={`ec-price${event.isFree ? ' free' : ''}`}>{event.price}</div>
         <span className={`ec-avail${event.low ? ' low' : ''}`}>{event.low ? '⚡ Ít vé' : '● Còn vé'}</span>
+        <a className="event-buy-link" href="/reserve" aria-label={`Chọn vé cho ${event.title}`}>Mua vé</a>
       </div>
     </div>
   )

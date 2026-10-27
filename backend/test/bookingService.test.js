@@ -24,6 +24,8 @@ function createPool({ existingBooking = false, failOnTicket = false } = {}) {
       return [[{ now_utc: '2026-10-04T12:00:00.000000Z' }], []];
     },
     async execute(sql) {
+      if (sql.includes('SELECT showing_id FROM reservations WHERE id')) return [[{ showing_id: reservation.showing_id }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: reservation.showing_id }], []];
       if (sql.includes('FROM reservations r')) return [[reservation], []];
       if (sql.includes('FROM bookings WHERE reservation_id')) {
         return [existingBooking ? [{ id: 41 }] : [], []];

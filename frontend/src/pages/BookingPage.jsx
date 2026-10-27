@@ -406,7 +406,9 @@ function BookingHistory({ token }) {
 }
 
 function BookingConfirmation({ token }) {
-  const [reservationId, setReservationId] = useState('')
+  const [reservationId, setReservationId] = useState(() => (
+    new URLSearchParams(window.location.search).get('reservation') || ''
+  ))
   const [booking, setBooking] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)

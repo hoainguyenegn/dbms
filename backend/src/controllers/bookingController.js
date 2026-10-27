@@ -1,5 +1,6 @@
-import { mysqlPool } from '../config/database.js';
+import { mysqlPool, redisClient } from '../config/database.js';
 import { cancelBooking, confirmReservation, getBooking, listBookings } from '../services/bookingService.js';
+import { clearReservationCache } from '../services/reservationService.js';
 
 const asyncRoute = (handler) => (request, response, next) => {
   Promise.resolve(handler(request, response)).catch(next);
@@ -11,6 +12,7 @@ export const confirm = asyncRoute(async (request, response) => {
     return response.status(400).json({ error: 'INVALID_RESERVATION_ID', message: 'Mã phiếu giữ vé không hợp lệ.' });
   }
   const result = await confirmReservation(mysqlPool, reservationId, request.user.id);
+  await clearReservationCache(redisClient, reservationId, request.user.id);
   return response.status(result.created ? 201 : 200).json({ booking: result.booking });
 });
 

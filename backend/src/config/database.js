@@ -26,6 +26,21 @@ export const mysqlPool = mysql.createPool({
   connectTimeout: 3000,
 });
 
+async function checkMySQLConnection() {
+  let connection;
+  try {
+    connection = await mysqlPool.getConnection();
+    await connection.query('SELECT 1');
+    console.info(`MySQL connected: ${process.env.MYSQL_DATABASE}`);
+  } catch (error) {
+    console.error('MySQL connection failed:', error.message);
+  } finally {
+    connection?.release();
+  }
+}
+
+void checkMySQLConnection();
+
 export const redisClient = createClient({
   socket: {
     host: process.env.REDIS_HOST || '127.0.0.1',

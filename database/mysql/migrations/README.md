@@ -8,6 +8,8 @@ Thư mục này dành để lưu trữ các tệp lệnh **Định nghĩa Dữ l
 
 Migration `001_init_schema.sql` khởi tạo 9 bảng theo tài liệu thiết kế, gồm các chỉ mục và khóa ngoại phức hợp dùng để giữ nhất quán giữa phiếu giữ, suất diễn, đơn hàng và vé. Migration `002_registration_otps.sql` bổ sung vùng lưu OTP đăng ký có thời hạn.
 
+Sau khi chạy migrations, có thể nạp dữ liệu demo bằng `../seeds/001_seed_fixture.sql`.
+
 ---
 
 ## 2. Quy ước Tên và Thứ tự Thực thi

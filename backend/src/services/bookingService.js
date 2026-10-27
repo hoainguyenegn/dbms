@@ -87,6 +87,18 @@ export async function confirmReservation(pool, reservationId, userId) {
     await connection.beginTransaction();
     transactionOpen = true;
 
+    const [reservationLookupRows] = await connection.execute(
+      'SELECT showing_id FROM reservations WHERE id = ? AND user_id = ?',
+      [reservationId, userId],
+    );
+    if (!reservationLookupRows[0]) {
+      throw new BookingError(404, 'RESERVATION_NOT_FOUND', 'Không tìm thấy phiếu giữ vé.');
+    }
+    await connection.execute(
+      'SELECT id FROM event_showings WHERE id = ? FOR UPDATE',
+      [reservationLookupRows[0].showing_id],
+    );
+
     const [reservationRows] = await connection.execute(
       `SELECT r.id, r.user_id, r.showing_id, r.status,
               DATE_FORMAT(r.expires_at, '%Y-%m-%dT%H:%i:%s.%fZ') AS expires_at,

@@ -24,8 +24,8 @@ export function validateRegistrationInput(input) {
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new RegistrationError(400, 'INVALID_EMAIL', 'Địa chỉ email không hợp lệ.');
   }
-  if (password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
-    throw new RegistrationError(400, 'INVALID_PASSWORD', 'Mật khẩu cần ít nhất 8 ký tự và tối đa 72 byte.');
+  if (password.length < 8 || password.length > 200) {
+    throw new RegistrationError(400, 'INVALID_PASSWORD', 'Mật khẩu cần ít nhất 8 ký tự và tối đa 200 ký tự.');
   }
   return { username, fullName, email, password };
 }
