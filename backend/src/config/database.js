@@ -20,10 +20,16 @@ export const mysqlPool = mysql.createPool({
   database: process.env.MYSQL_DATABASE,
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASSWORD,
+  charset: 'utf8mb4',
+  timezone: 'Z',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 20,
   connectTimeout: 3000,
+});
+
+mysqlPool.pool.on('connection', connection => {
+  connection.query("SET time_zone = '+00:00'");
 });
 
 export const redisClient = createClient({

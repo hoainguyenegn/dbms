@@ -135,7 +135,10 @@ Tất cả các endpoint tuân thủ chuẩn RESTful API, định dạng JSON v�
 |:---|:---:|:---|:---:|:---|
 | **Hệ thống** | `GET` | `/` | Public | Thông tin phiên bản API |
 | **Hệ thống** | `GET` | `/health` | Public | Kiểm tra kết nối MySQL và Redis |
-| **Auth** | `POST` | `/api/auth/login` | Public | Đăng nhập tài khoản, trả về JWT Token |
+| **Auth** | `POST` | `/api/auth/register/send-otp` | Public | Gửi mã xác thực OTP 6 số về Email để bắt đầu đăng ký |
+| **Auth** | `POST` | `/api/auth/register/verify-otp` | Public | Xác thực mã OTP và cấp vé thiết lập mật khẩu |
+| **Auth** | `POST` | `/api/auth/register/complete` | Public | Tạo mật khẩu và hoàn tất đăng ký tài khoản mới |
+| **Auth** | `POST` | `/api/auth/login` | Public | Đăng nhập tài khoản bằng Email + Password, trả về Bearer JWT |
 | **Auth** | `POST` | `/api/auth/logout` | Đã đăng nhập | Đăng xuất phiên làm việc |
 | **Auth** | `GET` | `/api/auth/me` | Đã đăng nhập | Lấy thông tin tài khoản và vai trò người dùng |
 | **F03** | `GET` | `/api/events` | Public | Tìm kiếm sự kiện công khai (lọc keyword, category, city) |

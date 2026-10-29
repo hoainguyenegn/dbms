@@ -1,0 +1,264 @@
+/* ─── Event Detail Modal ────────────────────────────────────── */
+.evt-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.evt-modal {
+  background: #ffffff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.evt-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 16px;
+  font-weight: 700;
+  z-index: 10;
+  transition: all 0.15s;
+}
+
+.evt-close-btn:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.evt-header {
+  padding: 28px 28px 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.evt-category-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.evt-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+
+.evt-code {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.evt-desc {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.evt-body {
+  padding: 24px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.evt-section-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.showing-selector {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.showing-chip {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 140px;
+}
+
+.showing-chip:hover {
+  border-color: #cbd5e1;
+}
+
+.showing-chip.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.showing-city {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  background: #dbeafe;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.showing-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.showing-detail-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.showing-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 14px;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.status-open {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-upcoming {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.status-stopped, .status-ended {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.ticket-types-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ticket-types-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ticket-type-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tt-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tt-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.tt-price {
+  font-size: 13.5px;
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.tt-capacity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.tt-capacity strong {
+  color: #059669;
+}
+
+.evt-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.evt-loading-state, .evt-error-state {
+  padding: 48px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.evt-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #e63946;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+

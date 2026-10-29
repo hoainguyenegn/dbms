@@ -1,0 +1,45 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: eventbox-mysql
+    restart: unless-stopped
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-time-zone=+00:00
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: event_ticketing
+      MYSQL_USER: event_ticketing
+      MYSQL_PASSWORD: event_ticketing_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/mysql/migrations/001_init_schema.sql:/docker-entrypoint-initdb.d/01_init_schema.sql:ro
+      - ./database/mysql/migrations/002_showing_code_scope.sql:/docker-entrypoint-initdb.d/01b_showing_code_scope.sql:ro
+      - ./database/mysql/seeds/001_seed_fixture.sql:/docker-entrypoint-initdb.d/02_seed_fixture.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "event_ticketing", "-pevent_ticketing_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: eventbox-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
+  redis_data:
+

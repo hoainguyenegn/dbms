@@ -1,67 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useAuth } from '../context/AuthContext'
+import EventDetailModal from '../components/EventDetailModal'
+import '../components/Auth.css'
 import '../App.css'
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 
-/* ── Mock event data (sẽ thay bằng API thật) ─────────── */
 const CATEGORIES = [
-  { id: 'all', label: 'Tất cả', icon: '🎯' },
-  { id: 'music', label: 'Âm nhạc', icon: '🎵' },
-  { id: 'sport', label: 'Thể thao', icon: '⚽' },
-  { id: 'art', label: 'Nghệ thuật', icon: '🎨' },
-  { id: 'tech', label: 'Công nghệ', icon: '💻' },
-  { id: 'festival', label: 'Lễ hội', icon: '🎉' },
-  { id: 'workshop', label: 'Workshop', icon: '📚' },
+  { id: 'all', label: 'Tất cả' },
+  { id: 'MUSIC', label: 'Âm nhạc' },
+  { id: 'SPORTS', label: 'Thể thao' },
+  { id: 'THEATER', label: 'Sân khấu & Nghệ thuật' },
+  { id: 'WORKSHOP', label: 'Hội thảo' },
+  { id: 'FESTIVAL', label: 'Lễ hội' },
 ]
 
-const FEATURED = [
-  {
-    id: 1, badge: 'HOT', badgeClass: 'badge-hot',
-    emoji: '🎸',
-    bg: 'linear-gradient(135deg,#1e1b4b,#312e81)',
-    category: 'ÂM NHẠC',
-    title: 'Rock Storm 2026 — Đêm nhạc Rock không ngủ',
-    date: 'Thứ Bảy, 18/10/2026 · 19:30',
-    location: 'Nhà thi đấu Phú Thọ, TP.HCM',
-    price: '350.000',
-    available: 'Còn vé',
-  },
-  {
-    id: 2, badge: 'MỚI', badgeClass: 'badge-new',
-    emoji: '💻',
-    bg: 'linear-gradient(135deg,#0f4c81,#1a6ea8)',
-    category: 'CÔNG NGHỆ',
-    title: 'Vietnam Tech Summit 2026',
-    date: 'Chủ nhật, 26/10/2026 · 08:00',
-    location: 'GEM Center, Quận 1, TP.HCM',
-    price: '500.000',
-    available: 'Còn vé',
-  },
-  {
-    id: 3, badge: 'SẮP DIỄN RA', badgeClass: 'badge-soon',
-    emoji: '🎭',
-    bg: 'linear-gradient(135deg,#7c2d12,#9a3412)',
-    category: 'NGHỆ THUẬT',
-    title: 'Kịch nói: Cuộc đời như một vở kịch',
-    date: 'Thứ Sáu, 31/10/2026 · 20:00',
-    location: 'Nhà hát Thành phố, Quận 1',
-    price: '200.000',
-    available: 'Ít vé',
-  },
-]
-
-const EVENTS = [
-  { id: 10, emoji: '🎤', bg: '#fef3c7', category: 'ÂM NHẠC', title: 'Đêm nhạc Trịnh Công Sơn', date: '05/10/2026', location: 'Hà Nội', price: '150.000' },
-  { id: 11, emoji: '🏃', bg: '#d1fae5', category: 'THỂ THAO', title: 'TP.HCM Marathon 2026', date: '12/10/2026', location: 'TP.HCM', price: 'Miễn phí', isFree: true },
-  { id: 12, emoji: '🎨', bg: '#ede9fe', category: 'NGHỆ THUẬT', title: 'Triển lãm Mỹ thuật Đương đại', date: '08/10/2026', location: 'Đà Nẵng', price: '80.000' },
-  { id: 13, emoji: '📱', bg: '#dbeafe', category: 'CÔNG NGHỆ', title: 'AI & Future Conference', date: '15/10/2026', location: 'TP.HCM', price: '300.000', low: true },
-  { id: 14, emoji: '🎉', bg: '#fce7f3', category: 'LỄ HỘI', title: 'Lễ hội Ánh sáng Hội An 2026', date: '20/10/2026', location: 'Hội An', price: '120.000' },
-  { id: 15, emoji: '🌿', bg: '#ecfdf5', category: 'WORKSHOP', title: 'Workshop: Thiết kế bền vững', date: '22/10/2026', location: 'Hà Nội', price: '250.000' },
-  { id: 16, emoji: '🎵', bg: '#fff7ed', category: 'ÂM NHẠC', title: 'Jazz Night by the River', date: '25/10/2026', location: 'TP.HCM', price: '180.000', low: true },
-  { id: 17, emoji: '⚽', bg: '#fef9c3', category: 'THỂ THAO', title: 'Giải bóng đá Cúp Thanh Niên', date: '02/11/2026', location: 'Hà Nội', price: 'Miễn phí', isFree: true },
-]
-
-/* ── Icon component ──────────────────────────────────── */
 function Icon({ name }) {
   const paths = {
     ticket: <><path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4Z" /><path d="M9 5v3m0 3v2m0 3v3" /></>,
@@ -69,11 +22,9 @@ function Icon({ name }) {
     mapPin: <><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></>,
     calendar: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
     chevronRight: <path d="m9 18 6-6-6-6" />,
-    arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,
-    star: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />,
   }
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
       strokeLinejoin="round" aria-hidden="true">
       {paths[name]}
@@ -81,162 +32,243 @@ function Icon({ name }) {
   )
 }
 
-/* ── Featured card ───────────────────────────────────── */
-function FeaturedCard({ event }) {
-  return (
-    <div className="featured-card">
-      <div className="fc-banner" style={{ background: event.bg }}>
-        <div className="fc-banner-placeholder">{event.emoji}</div>
-        <span className={`fc-badge ${event.badgeClass}`}>{event.badge}</span>
-      </div>
-      <div className="fc-body">
-        <p className="fc-category">{event.category}</p>
-        <h3 className="fc-title">{event.title}</h3>
-        <div className="fc-meta">
-          <div className="fc-meta-row"><Icon name="calendar" />{event.date}</div>
-          <div className="fc-meta-row"><Icon name="mapPin" />{event.location}</div>
-        </div>
-      </div>
-      <div className="fc-footer">
-        <div className="fc-price">
-          {event.price}<small> đ</small>
-        </div>
-        <button className="btn-ticket">Mua vé</button>
-      </div>
-    </div>
-  )
-}
+function EventCardItem({ event, onClick }) {
+  const formatPrice = (p) => {
+    if (p == null) return 'Đang cập nhật'
+    return new Intl.NumberFormat('vi-VN').format(p) + ' đ'
+  }
 
-/* ── Event card ──────────────────────────────────────── */
-function EventCard({ event }) {
+  const formatDate = (isoStr) => {
+    if (!isoStr) return 'Sắp mở bán'
+    const d = new Date(isoStr)
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }
+
   return (
-    <div className="event-card">
-      <div className="ec-img" style={{ background: event.bg }}>
-        <div className="ec-img-placeholder">{event.emoji}</div>
-        <div className="ec-date-badge">{event.date}</div>
+    <div className="event-card" onClick={onClick} style={{ cursor: 'pointer' }}>
+      <div className="ec-img" style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)' }}>
+        <div className="ec-date-badge">{formatDate(event.earliest_showing_at)}</div>
       </div>
       <div className="ec-body">
         <p className="ec-category">{event.category}</p>
         <h3 className="ec-title">{event.title}</h3>
-        <div className="ec-location"><Icon name="mapPin" />{event.location}</div>
+        <div className="ec-location">
+          <Icon name="mapPin" />
+          <span>{event.venue_name ? `${event.venue_name} (${event.city_code})` : (event.city_code || 'Toàn quốc')}</span>
+        </div>
       </div>
       <div className="ec-footer">
-        <div className={`ec-price${event.isFree ? ' free' : ''}`}>{event.price}</div>
-        <span className={`ec-avail${event.low ? ' low' : ''}`}>{event.low ? '⚡ Ít vé' : '● Còn vé'}</span>
+        <div className="ec-price">
+          {event.min_price != null ? `Từ ${formatPrice(event.min_price)}` : 'Đang cập nhật giá'}
+        </div>
+        <span className="ec-avail" style={{ color: '#059669', fontWeight: 600 }}>
+          {event.sales_status === 'OPEN' ? 'Đang mở bán' : event.sales_status === 'UPCOMING' ? 'Sắp mở bán' : 'Đã ngừng bán'}
+        </span>
       </div>
     </div>
   )
 }
 
-/* ── Navbar ──────────────────────────────────────────── */
-function Navbar({ apiStatus }) {
+function Navbar({ onOpenAdminEvents }) {
+  const { user, isAuthenticated, logout, openAuthModal } = useAuth()
+
   return (
     <nav className="navbar" role="navigation" aria-label="Điều hướng chính">
       <a className="nav-brand" href="/" aria-label="EventBox trang chủ">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4Z" />
           <path d="M9 5v3m0 3v2m0 3v3" />
         </svg>
         EventBox
       </a>
       <div className="nav-links" role="list">
-        {['Sự kiện', 'Âm nhạc', 'Thể thao', 'Lễ hội'].map((l) => (
-          <a key={l} className="nav-link-item" href="#events" role="listitem">{l}</a>
+        {['Sự kiện', 'Âm nhạc', 'Thể thao', 'Sân khấu'].map((item) => (
+          <a key={item} className="nav-link-item" href="#events" role="listitem">{item}</a>
         ))}
       </div>
       <div className="nav-right">
-        <button className="btn-ghost">Đăng nhập</button>
-        <button className="btn-primary">Tạo tài khoản</button>
+        {isAuthenticated && user?.role === 'MANAGER' && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={onOpenAdminEvents}
+            style={{
+              background: '#0f172a',
+              border: '1px solid #334155',
+              padding: '7px 14px',
+              fontSize: 13,
+            }}
+          >
+            Quản lý sự kiện
+          </button>
+        )}
+
+        {!isAuthenticated ? (
+          <>
+            <button className="btn-ghost" onClick={() => openAuthModal('login')}>
+              Đăng nhập
+            </button>
+            <button className="btn-primary" onClick={() => openAuthModal('register')}>
+              Đăng ký
+            </button>
+          </>
+        ) : (
+          <div className="nav-user-profile">
+            <div className="user-badge" title={user?.email || ''}>
+              <div className="user-avatar">
+                {user?.full_name ? user.full_name[0] : (user?.username ? user.username[0] : 'U')}
+              </div>
+              <div className="user-info">
+                <span className="user-name">{user?.full_name || user?.username}</span>
+                <span className={`user-role role-${(user?.role || 'user').toLowerCase()}`}>
+                  {user?.role === 'MANAGER' ? 'Quản lý' : 'Khách hàng'}
+                </span>
+              </div>
+            </div>
+            <button className="btn-logout" onClick={logout} title="Đăng xuất">
+              Đăng xuất
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   )
 }
 
-/* ── Main page ───────────────────────────────────────── */
-export default function HomePage() {
+export default function HomePage({ onOpenAuthPage, onOpenAdminEvents }) {
+  const { isAuthenticated, user } = useAuth()
+  const [error, setError] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const activeRequest = useRef(null)
   const [activeCategory, setActiveCategory] = useState('all')
   const [query, setQuery] = useState('')
-  const [apiStatus, setApiStatus] = useState(null)
+  const [selectedCity, setSelectedCity] = useState('ALL')
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedEventId, setSelectedEventId] = useState(null)
 
-  /* Kiểm tra sức khỏe hệ thống ngầm — không hiển thị nổi bật */
+  const fetchEvents = useCallback(async () => {
+    activeRequest.current?.abort()
+    const controller = new AbortController()
+    activeRequest.current = controller
+    setLoading(true)
+    setError('')
+    try {
+      const params = new URLSearchParams()
+      if (query.trim()) params.append('search', query.trim())
+      if (activeCategory !== 'all') params.append('category', activeCategory)
+      if (selectedCity !== 'ALL') params.append('city', selectedCity)
+
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      params.set('page', page)
+      const res = await fetch(`${API_URL}/api/events?${params.toString()}`, { signal: controller.signal })
+      if (res.ok) {
+        const data = await res.json()
+        if (controller.signal.aborted) return
+        setEvents(data.events || [])
+        setTotal(data.total)
+        setTotalPages(data.total_pages)
+      } else {
+        const data = await res.json()
+        throw new Error(data.message || 'Không thể tải sự kiện.')
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') setError(err.message || 'Không thể kết nối đến máy chủ.')
+    } finally {
+      if (activeRequest.current === controller) setLoading(false)
+    }
+  }, [query, activeCategory, selectedCity, from, to, page])
+
   useEffect(() => {
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 6000)
-    fetch(`${API_URL}/health`, { signal: ctrl.signal, cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => setApiStatus(d?.status === 'healthy' ? 'up' : 'degraded'))
-      .catch(() => setApiStatus('down'))
-      .finally(() => clearTimeout(timer))
-    return () => { ctrl.abort(); clearTimeout(timer) }
-  }, [])
-
-  const visibleEvents = EVENTS.filter((e) => {
-    const matchCat = activeCategory === 'all' || CATEGORIES.find(
-      (c) => c.id === activeCategory && e.category.toLowerCase().includes(c.label.toLowerCase().slice(0, 4))
-    )
-    const matchQ = !query || e.title.toLowerCase().includes(query.toLowerCase()) || e.location.toLowerCase().includes(query.toLowerCase())
-    return matchCat && matchQ
-  })
+    const timer = setTimeout(() => {
+      fetchEvents()
+    }, 200)
+    return () => { clearTimeout(timer); activeRequest.current?.abort() }
+  }, [fetchEvents])
 
   return (
     <div className="app">
-      <Navbar apiStatus={apiStatus} />
+      <Navbar onOpenAdminEvents={onOpenAdminEvents} />
 
-      {/* ── Hero ── */}
+      {/* Hero Banner */}
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-inner">
-          <h1 id="hero-title">Khám phá sự kiện<br />dành cho <em>bạn.</em></h1>
-          <p className="hero-sub">Hàng nghìn sự kiện âm nhạc, thể thao, nghệ thuật và công nghệ đang chờ bạn. Đặt vé dễ dàng, nhanh chóng và an toàn.</p>
+          <h1 id="hero-title">Khám phá và đặt vé<br />các sự kiện hàng đầu</h1>
+          <p className="hero-sub">Nền tảng đặt vé trực tuyến an toàn, nhanh chóng và bảo mật cho mọi sự kiện âm nhạc, thể thao và nghệ thuật.</p>
           <div className="hero-actions">
             <a className="btn-hero btn-hero-primary" href="#events">
-              <Icon name="ticket" /> Xem sự kiện
+              <Icon name="ticket" /> Khám phá sự kiện
             </a>
-            <a className="btn-hero btn-hero-outline" href="#featured">
-              <Icon name="star" /> Nổi bật tuần này
-            </a>
+            {isAuthenticated && user?.role === 'MANAGER' && (
+              <button
+                type="button"
+                className="btn-hero btn-hero-outline"
+                onClick={onOpenAdminEvents}
+              >
+                Quản lý sự kiện
+              </button>
+            )}
           </div>  
         </div>
       </section>
 
-      {/* ── Tìm kiếm ── */}
+      {/* Search Bar */}
       <div className="search-section">
         <div className="search-inner">
-          <div className="search-bar" role="search">
-            <span className="search-icon" aria-hidden="true"><Icon name="search" /></span>
-            <input
-              className="search-input"
-              type="search"
-              placeholder="Tìm sự kiện, nghệ sĩ, địa điểm…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Tìm kiếm sự kiện"
-            />
-            <div className="search-divider" aria-hidden="true" />
-            <select className="search-select" aria-label="Chọn thành phố">
-              <option>TP.HCM</option>
-              <option>Hà Nội</option>
-              <option>Đà Nẵng</option>
-              <option>Tất cả</option>
-            </select>
-            <button className="btn-search" aria-label="Tìm kiếm">Tìm kiếm</button>
-          </div>
+          <form className="search-bar" role="search" onSubmit={e => { e.preventDefault(); fetchEvents() }}>
+            <label className="search-keyword">
+              <span className="search-icon" aria-hidden="true"><Icon name="search" /></span>
+              <input className="search-input" type="search" placeholder="Bạn muốn tham gia sự kiện nào?"
+                value={query} onChange={e => { setQuery(e.target.value); setPage(1) }} aria-label="Tìm kiếm sự kiện" />
+            </label>
+            <label className="search-field search-city">
+              <span className="search-field-label"><Icon name="mapPin" />Địa điểm</span>
+              <select className="search-select" value={selectedCity} onChange={e => { setSelectedCity(e.target.value); setPage(1) }}>
+                <option value="ALL">Tất cả thành phố</option>
+                <option value="HCM">TP. Hồ Chí Minh</option>
+                <option value="HN">Hà Nội</option>
+                <option value="DN">Đà Nẵng</option>
+              </select>
+            </label>
+            <div className="search-date-range" role="group" aria-label="Khoảng ngày tổ chức">
+              <label className="search-field">
+                <span className="search-field-label"><Icon name="calendar" />Từ ngày</span>
+                <input className="search-date" type="date" value={from} max={to || undefined}
+                  onChange={e => { setFrom(e.target.value); setPage(1) }} />
+              </label>
+              <span className="date-range-arrow" aria-hidden="true">→</span>
+              <label className="search-field">
+                <span className="search-field-label">Trước ngày</span>
+                <input className="search-date" type="date" value={to} min={from || undefined}
+                  onChange={e => { setTo(e.target.value); setPage(1) }} />
+              </label>
+            </div>
+            <button type="submit" className="btn-search"><Icon name="search" />Tìm kiếm</button>
+          </form>
+          {(from || to) && <div className="search-filter-summary">
+            <span>Lọc theo ngày tổ chức · Ngày kết thúc không bao gồm trong khoảng lọc</span>
+            <button type="button" onClick={() => { setFrom(''); setTo(''); setPage(1) }}>Xóa ngày đã chọn ×</button>
+          </div>}
         </div>
       </div>
 
-      {/* ── Categories ── */}
+      {/* Categories Bar */}
       <div className="category-section" aria-label="Lọc theo thể loại">
         <div className="category-inner">
-          <p className="section-label">THỂ LOẠI</p>
           <div className="category-list" role="list">
             {CATEGORIES.map((c) => (
               <button
                 key={c.id}
                 role="listitem"
                 className={`chip${activeCategory === c.id ? ' active' : ''}`}
-                onClick={() => setActiveCategory(c.id)}
+                onClick={() => { setActiveCategory(c.id); setPage(1) }}
                 aria-pressed={activeCategory === c.id}
               >
-                <span className="chip-icon" aria-hidden="true">{c.icon}</span>
                 {c.label}
               </button>
             ))}
@@ -244,112 +276,104 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Main content ── */}
+      {/* Main Events List */}
       <main className="main" id="events" tabIndex={-1}>
+        <div className="section-header">
+          <h2 className="section-title" id="all-events-title">
+            {activeCategory === 'all' && !query ? 'Sự kiện sắp diễn ra' : 'Kết quả tìm kiếm'}
+            <span>{events.length > 0 ? `(${total} sự kiện)` : ''}</span>
+          </h2>
+        </div>
 
-        {/* Featured */}
-        {activeCategory === 'all' && !query && (
-          <section aria-labelledby="featured-title" id="featured">
-            <div className="section-header">
-              <h2 className="section-title" id="featured-title">
-                🔥 Sự kiện nổi bật <span>được chọn lọc</span>
-              </h2>
-              <a className="section-link" href="#events">Xem thêm <Icon name="chevronRight" /></a>
-            </div>
-            <div className="featured-strip">
-              {FEATURED.map((e) => <FeaturedCard key={e.id} event={e} />)}
-            </div>
-          </section>
-        )}
-
-        {/* Promo banner */}
-        {activeCategory === 'all' && !query && (
-          <div className="promo-banner" role="complementary" aria-label="Khuyến mãi">
-            <div className="promo-content">
-              <h2>Tạo tài khoản — Đặt vé ngay</h2>
-              <p>Nhận thông báo sự kiện mới nhất, ưu đãi độc quyền và quản lý vé của bạn dễ dàng hơn bao giờ hết.</p>
-            </div>
-            <button className="btn-promo">Đặt vé ngay →</button>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
+            <div className="evt-spinner" style={{ margin: '0 auto 12px' }} />
+            Đang tải danh sách sự kiện...
+          </div>
+        ) : error ? (
+          <div role="alert"><p>{error}</p><button className="btn-primary" onClick={fetchEvents}>Thử lại</button></div>
+        ) : events.length > 0 ? (
+          <div className="event-grid" role="list" aria-label="Danh sách sự kiện">
+            {events.map((evt) => (
+              <div key={evt.id} role="listitem">
+                <EventCardItem
+                  event={evt}
+                  onClick={() => setSelectedEventId(evt.id)}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state" role="status">
+            <h3>Không tìm thấy sự kiện phù hợp</h3>
+            <p>Vui lòng thử tìm kiếm với từ khóa khác hoặc chuyển sang danh mục khác.</p>
+            {isAuthenticated && user?.role === 'MANAGER' && (
+              <button
+                className="btn-primary"
+                onClick={onOpenAdminEvents}
+                style={{ marginTop: 14 }}
+              >
+                Tạo sự kiện mới
+              </button>
+            )}
           </div>
         )}
-
-        {/* Event grid */}
-        <section aria-labelledby="all-events-title">
-          <div className="section-header">
-            <h2 className="section-title" id="all-events-title">
-              {activeCategory === 'all' && !query ? 'Sắp diễn ra' : 'Kết quả tìm kiếm'}
-              <span>
-                {visibleEvents.length > 0 ? `${visibleEvents.length} sự kiện` : ''}
-              </span>
-            </h2>
-          </div>
-
-          {visibleEvents.length > 0 ? (
-            <div className="event-grid" role="list" aria-label="Danh sách sự kiện">
-              {visibleEvents.map((e) => (
-                <div key={e.id} role="listitem">
-                  <EventCard event={e} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state" role="status">
-              <div className="empty-state-icon">🔍</div>
-              <h3>Không tìm thấy sự kiện</h3>
-              <p>Hãy thử từ khóa khác hoặc chọn thể loại khác.</p>
-            </div>
-          )}
-        </section>
+        {!loading && !error && totalPages > 1 && <div style={{ display: 'flex', gap: 16, marginTop: 24 }}>
+          <button disabled={page <= 1} onClick={() => setPage(page - 1)}>Trang trước</button>
+          <span>Trang {page} / {totalPages}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Trang sau</button>
+        </div>}
       </main>
 
-      {/* ── Footer ── */}
+      {/* Event Details Modal */}
+      {selectedEventId && (
+        <EventDetailModal
+          eventId={selectedEventId}
+          onClose={() => setSelectedEventId(null)}
+          onSelectTicket={(evt, showing) => {
+            alert(`Đã chọn suất diễn tại: ${showing.venue_name}`)
+          }}
+        />
+      )}
+
+      {/* Footer */}
       <footer className="footer">
         <div className="footer-inner">
           <div className="footer-top">
             <div>
               <div className="footer-brand">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="24" height="24">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
                   <path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4Z" />
                   <path d="M9 5v3m0 3v2m0 3v3" />
                 </svg>
                 EventBox
               </div>
-              <p className="footer-desc">Web app đặt vé sự kiện trực tuyến — BTL môn Hệ quản trị Cơ sở dữ liệu HK261.</p>
+              <p className="footer-desc">Nền tảng thương mại điện tử chuyên biệt cho vé sự kiện và giải trí trực tuyến.</p>
             </div>
             <div className="footer-col">
-              <h4>KHÁM PHÁ</h4>
+              <h4>DANH MỤC</h4>
               <ul>
-                <li><a href="#">Âm nhạc</a></li>
-                <li><a href="#">Thể thao</a></li>
-                <li><a href="#">Nghệ thuật</a></li>
-                <li><a href="#">Lễ hội</a></li>
+                <li><a href="#events" onClick={() => setActiveCategory('MUSIC')}>Âm nhạc</a></li>
+                <li><a href="#events" onClick={() => setActiveCategory('SPORTS')}>Thể thao</a></li>
+                <li><a href="#events" onClick={() => setActiveCategory('THEATER')}>Sân khấu & Nghệ thuật</a></li>
+                <li><a href="#events" onClick={() => setActiveCategory('WORKSHOP')}>Hội thảo</a></li>
               </ul>
             </div>
             <div className="footer-col">
-              <h4>HỖ TRỢ</h4>
+              <h4>TÀI KHOẢN</h4>
               <ul>
-                <li><a href="#">Trung tâm trợ giúp</a></li>
-                <li><a href="#">Liên hệ</a></li>
-                <li><a href="#">Chính sách hoàn vé</a></li>
-              </ul>
-            </div>
-            <div className="footer-col">
-              <h4>NHÀ TỔ CHỨC</h4>
-              <ul>
-                <li><a href="#">Tạo sự kiện</a></li>
-                <li><a href="#">Quản lý vé</a></li>
-                <li><a href="#">Thống kê</a></li>
+                <li><button type="button" onClick={onOpenAuthPage} style={{ color: '#9ca3af', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Tài khoản của tôi</button></li>
+                {isAuthenticated && user?.role === 'MANAGER' && (
+                  <li><button type="button" onClick={onOpenAdminEvents} style={{ color: '#9ca3af', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Quản trị sự kiện</button></li>
+                )}
               </ul>
             </div>
           </div>
           <div className="footer-bottom">
-            <span>© 2026 EventBox · Đồ án DBMS · React + Node.js + MySQL + Redis</span>
-            <div className="footer-badges">
-            </div>
+            <span>© 2026 EventBox. Bản quyền thuộc về hệ thống đặt vé trực tuyến EventBox.</span>
           </div>
         </div>
       </footer>
     </div>
   )
 }
-
