@@ -27,6 +27,10 @@ function createPool({ capacityRows, existingReservation = null, existingItems = 
     async rollback() { calls.rollbacks += 1; },
     release() { calls.releases += 1; },
     async execute(sql) {
+      if (sql.startsWith('SET TRANSACTION')) return [[], []];
+      if (sql.includes('SELECT showing_id FROM bookings WHERE booking_code')) return [[{ showing_id: 12 }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: 12 }], []];
+      if (sql.includes('SELECT e.id FROM events e')) return [[{ id: 1 }], []];
       if (sql.includes('FROM event_showings s')) return [[showing], []];
       if (sql.includes('WHERE user_id = ? AND request_key = ?')) {
         return [existingReservation ? [existingReservation] : [], []];
@@ -50,6 +54,10 @@ function createPool({ capacityRows, existingReservation = null, existingItems = 
   const pool = {
     getConnection: async () => connection,
     async execute(sql) {
+      if (sql.startsWith('SET TRANSACTION')) return [[], []];
+      if (sql.includes('SELECT showing_id FROM bookings WHERE booking_code')) return [[{ showing_id: 12 }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: 12 }], []];
+      if (sql.includes('SELECT e.id FROM events e')) return [[{ id: 1 }], []];
       if (sql.includes("SET status = 'EXPIRED'")) return [{ affectedRows: 0 }, []];
       if (sql.includes('FROM reservations r')) {
         return [[{
@@ -187,6 +195,10 @@ test('release changes an active hold once and removes its Redis cache', async ()
     async rollback() {},
     release() {},
     async execute(sql) {
+      if (sql.startsWith('SET TRANSACTION')) return [[], []];
+      if (sql.includes('SELECT showing_id FROM bookings WHERE booking_code')) return [[{ showing_id: 12 }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: 12 }], []];
+      if (sql.includes('SELECT e.id FROM events e')) return [[{ id: 1 }], []];
       if (sql.includes('SELECT id FROM event_showings')) return [[{ id: 12 }], []];
       if (sql.includes('SELECT status, expires_at')) return [[{ status: 'ACTIVE', is_expired: 0 }], []];
       if (sql.includes('UPDATE reservations SET status')) {
@@ -199,6 +211,10 @@ test('release changes an active hold once and removes its Redis cache', async ()
   };
   const pool = {
     async execute(sql) {
+      if (sql.startsWith('SET TRANSACTION')) return [[], []];
+      if (sql.includes('SELECT showing_id FROM bookings WHERE booking_code')) return [[{ showing_id: 12 }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: 12 }], []];
+      if (sql.includes('SELECT e.id FROM events e')) return [[{ id: 1 }], []];
       if (sql.includes('SELECT showing_id FROM reservations')) return [[{ showing_id: 12 }], []];
       if (sql.includes("SET status = 'EXPIRED'")) return [{ affectedRows: 0 }, []];
       if (sql.includes('FROM reservations r')) {

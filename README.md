@@ -5,6 +5,8 @@
 
 ---
 
+Bản tích hợp F01–F06: xem [hướng dẫn chạy, migration và kiểm thử](docs/integration-f01-f06.md).
+
 ## 1. Giới thiệu tổng quan
 
 **EventBox** là ứng dụng web đặt vé sự kiện trực tuyến phục vụ đồ án môn **Hệ quản trị Cơ sở dữ liệu (DBMS)**. 
@@ -64,11 +66,14 @@ Hệ thống được thiết kế để minh họa và thực nghiệm 3 chủ 
 npm --prefix backend install
 npm --prefix frontend install
 
-# 3. Khởi động Backend (Terminal 1)
+# 3. Nâng cấp database hiện có (không chạy seed)
+npm --prefix backend run migrate
+
+# 4. Khởi động Backend (Terminal 1)
 npm --prefix backend run dev
 # -> Server REST API hoạt động tại: http://localhost:3000
 
-# 4. Khởi động Frontend (Terminal 2)
+# 5. Khởi động Frontend (Terminal 2)
 npm --prefix frontend run dev
 # -> Giao diện Web hoạt động tại: http://localhost:5173
 ```
@@ -135,7 +140,9 @@ Tất cả các endpoint tuân thủ chuẩn RESTful API, định dạng JSON v�
 |:---|:---:|:---|:---:|:---|
 | **Hệ thống** | `GET` | `/` | Public | Thông tin phiên bản API |
 | **Hệ thống** | `GET` | `/health` | Public | Kiểm tra kết nối MySQL và Redis |
-| **Auth** | `POST` | `/api/auth/login` | Public | Đăng nhập tài khoản, trả về JWT Token |
+| **Auth** | `POST` | `/api/auth/register` | Public | Gửi OTP sau khi nhận email, họ tên và mật khẩu |
+| **Auth** | `POST` | `/api/auth/verify-registration` | Public | Xác thực OTP, tạo tài khoản và trả JWT |
+| **Auth** | `POST` | `/api/auth/login` | Public | Đăng nhập tài khoản bằng Email + Password, trả về Bearer JWT |
 | **Auth** | `POST` | `/api/auth/logout` | Đã đăng nhập | Đăng xuất phiên làm việc |
 | **Auth** | `GET` | `/api/auth/me` | Đã đăng nhập | Lấy thông tin tài khoản và vai trò người dùng |
 | **F03** | `GET` | `/api/events` | Public | Tìm kiếm sự kiện công khai (lọc keyword, category, city) |

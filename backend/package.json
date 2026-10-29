@@ -1,12 +1,17 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "EventBox API — Đồ án môn Cơ sở dữ liệu (DBMS)",
+  "main": "src/server.js",
   "scripts": {
     "test": "node --test",
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test:catalog": "node --test test/event_catalog.test.js",
+    "migrate:showing-scope": "node scripts/migrate-showing-scope.js",
+    "test:catalog:mysql": "TEST_CATALOG_MYSQL=1 node --test test/event_catalog.mysql.test.js",
+    "migrate": "node scripts/migrate.js",
+    "test:integration:docker": "node scripts/run-integration-docker.js"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +24,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.24.4",
+    "nodemailer": "^6.9.16",
     "redis": "^6.2.1"
   }
 }

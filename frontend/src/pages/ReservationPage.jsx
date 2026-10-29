@@ -1,18 +1,9 @@
 import { useEffect, useState } from 'react'
 import './ReservationPage.css'
+import { useAuth } from '../context/useAuth'
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
-const SESSION_KEY = 'eventbox-session'
 const ACTIVE_RESERVATION_KEY = 'eventbox-active-reservation'
-
-function readSession() {
-  try {
-    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')
-    return session?.token && session?.user?.role === 'USER' ? session : null
-  } catch {
-    return null
-  }
-}
 
 async function request(path, { token, ...options } = {}) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -46,9 +37,10 @@ function readStoredReservation() {
 }
 
 export default function ReservationPage() {
-  const [session] = useState(readSession)
+  const { user, token, loading: authLoading, openAuthModal } = useAuth()
+  const session = user?.role === 'USER' && token ? { user, token } : null
   const [showings, setShowings] = useState([])
-  const [showingId, setShowingId] = useState('')
+  const [showingId, setShowingId] = useState(() => new URLSearchParams(window.location.search).get('showing') || '')
   const [quantities, setQuantities] = useState({})
   const [reservation, setReservation] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -75,12 +67,12 @@ export default function ReservationPage() {
   }, [])
 
   useEffect(() => {
-    if (!session) return undefined
+    if (!token || user?.role !== 'USER') return undefined
     const reservationId = readStoredReservation()
     if (!reservationId) return undefined
     const controller = new AbortController()
     request(`/api/reservations/${encodeURIComponent(reservationId)}`, {
-      token: session.token,
+      token,
       signal: controller.signal,
     })
       .then((data) => {
@@ -92,7 +84,7 @@ export default function ReservationPage() {
         sessionStorage.removeItem(ACTIVE_RESERVATION_KEY)
       })
     return () => controller.abort()
-  }, [session])
+  }, [token, user?.role])
 
   useEffect(() => {
     const tick = () => setNow(Date.now())
@@ -194,7 +186,7 @@ export default function ReservationPage() {
         <nav aria-label="Điều hướng người dùng">
           <a href="/">Sự kiện</a>
           <a href="/my-tickets">Vé của tôi</a>
-          {!session && <a className="reservation-login" href="/my-tickets">Đăng nhập</a>}
+          {!session && <button className="reservation-login" onClick={() => openAuthModal()}>Đăng nhập</button>}
         </nav>
       </header>
 
@@ -209,11 +201,11 @@ export default function ReservationPage() {
           <a className="reservation-history-link" href="/my-tickets">Vé của tôi <span aria-hidden="true">↗</span></a>
         </div>
 
-        {!session && (
+        {!authLoading && !session && (
           <div className="reservation-signin" role="status">
             <span className="signin-mark" aria-hidden="true">!</span>
             <div><strong>Cần đăng nhập để giữ vé</strong><p>Đăng nhập hoặc tạo tài khoản khách hàng trước khi tiếp tục.</p></div>
-            <a href="/my-tickets">Đăng nhập</a>
+            <button className="reservation-login" onClick={() => openAuthModal()}>Đăng nhập</button>
           </div>
         )}
 

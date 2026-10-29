@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import './BookingPage.css'
+import { useAuth } from '../context/useAuth'
+import AuthForm from '../components/AuthForm'
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 const reservationPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -9,15 +11,6 @@ const filters = [
   { id: 'PAST', label: 'Đã qua' },
   { id: 'CANCELLED', label: 'Đã hủy' },
 ]
-
-function readSession() {
-  try {
-    const session = JSON.parse(localStorage.getItem('eventbox-session') || 'null')
-    return session?.token && session?.user ? session : null
-  } catch {
-    return null
-  }
-}
 
 async function apiRequest(path, { token, ...options } = {}) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -50,91 +43,6 @@ function formatDate(value, options = {}) {
 
 function formatMoney(value) {
   return `${new Intl.NumberFormat('vi-VN').format(value || 0)} đ`
-}
-
-function LoginPanel({ onLogin, onRegister, onVerify, error, busy }) {
-  const [mode, setMode] = useState('login')
-  const [username, setUsername] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [code, setCode] = useState('')
-
-  async function submit(event) {
-    event.preventDefault()
-    if (mode === 'login') {
-      await onLogin({ username, password })
-      return
-    }
-    if (mode === 'register') {
-      const request = await onRegister({ username, full_name: fullName, email, password })
-      if (request) {
-        setEmail(request.email)
-        setMode('verify')
-      }
-      return
-    }
-    await onVerify({ email, code })
-  }
-
-  return (
-    <section className="booking-login" aria-labelledby="login-title">
-      <div className="login-mark" aria-hidden="true">EB</div>
-      <p className="booking-eyebrow">TÀI KHOẢN EVENTBOX</p>
-      <h2 id="login-title">{mode === 'verify' ? 'Xác minh email' : mode === 'register' ? 'Tạo tài khoản' : 'Đăng nhập để tiếp tục'}</h2>
-      <p className="login-copy">
-        {mode === 'verify'
-          ? `Nhập mã 6 chữ số vừa gửi đến ${email}. Mã có hiệu lực trong 10 phút.`
-          : mode === 'register'
-            ? 'Tạo tài khoản để xác nhận phiếu giữ và quản lý vé của bạn.'
-            : 'Dùng tài khoản EventBox để xác nhận phiếu giữ hoặc xem vé đã đặt.'}
-      </p>
-      <form className="login-form" onSubmit={submit}>
-        {mode !== 'verify' && (
-          <>
-            {mode === 'register' && (
-              <>
-                <label htmlFor="booking-full-name">Họ và tên</label>
-                <input autoComplete="name" id="booking-full-name" maxLength={100} value={fullName} onChange={(event) => setFullName(event.target.value)} required />
-              </>
-            )}
-            <label htmlFor="booking-username">Tên đăng nhập</label>
-            <input autoComplete="username" id="booking-username" maxLength={50} value={username} onChange={(event) => setUsername(event.target.value)} required />
-            {mode === 'register' && (
-              <>
-                <label htmlFor="booking-email">Email</label>
-                <input autoComplete="email" id="booking-email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-              </>
-            )}
-            <label htmlFor="booking-password">Mật khẩu</label>
-            <input autoComplete={mode === 'register' ? 'new-password' : 'current-password'} id="booking-password" maxLength={72} minLength={mode === 'register' ? 8 : undefined} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-          </>
-        )}
-        {mode === 'verify' && (
-          <>
-            <label htmlFor="registration-code">Mã xác minh</label>
-            <input autoComplete="one-time-code" id="registration-code" inputMode="numeric" maxLength={6} pattern="[0-9]{6}" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} required />
-          </>
-        )}
-        {error && <p className="booking-alert" role="alert">{error}</p>}
-        <button className="booking-button booking-button-primary login-submit" disabled={busy}>
-          {busy ? 'Đang xử lý…' : mode === 'verify' ? 'Xác minh và tạo tài khoản' : mode === 'register' ? 'Gửi mã xác minh' : 'Đăng nhập'}
-        </button>
-      </form>
-      <div className="auth-switch">
-        {mode === 'verify' ? (
-          <button onClick={() => setMode('register')}>Sửa thông tin đăng ký</button>
-        ) : (
-          <>
-            <span>{mode === 'register' ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}</span>
-            <button onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>
-              {mode === 'register' ? 'Đăng nhập' : 'Tạo tài khoản ngay'}
-            </button>
-          </>
-        )}
-      </div>
-    </section>
-  )
 }
 
 function TicketList({ booking }) {
@@ -457,17 +365,17 @@ function BookingConfirmation({ token }) {
             {busy ? 'Đang xác nhận…' : 'Xác nhận đặt vé'}
           </button>
         </form>
-        <p className="confirmation-footnote">Không có giao dịch ngân hàng trong bước này. Đơn và vé được ghi nhận bằng transaction nội bộ của hệ thống.</p>
+        <p className="confirmation-footnote">Đây là bước xác nhận đặt vé nội bộ, không phát sinh thanh toán ngân hàng.</p>
       </section>
 
       <aside className="confirmation-aside">
         <span className="aside-index">01 / 02</span>
-        <h3>Giao dịch được ghi nhận trọn vẹn</h3>
-        <p>Đơn hàng, chi tiết vé, mã vé điện tử và trạng thái phiếu giữ cùng commit hoặc cùng rollback.</p>
+        <h3>Vé của bạn, sẵn sàng cho sự kiện</h3>
+        <p>Kiểm tra phiếu giữ và xác nhận để nhận mã vé. Bạn có thể xem lại vé bất cứ lúc nào trong mục Vé của tôi.</p>
         <div className="transaction-steps">
           <span><i>1</i> Kiểm tra phiếu giữ</span>
-          <span><i>2</i> Ghi đơn và phát hành vé</span>
-          <span><i>3</i> Commit transaction</span>
+          <span><i>2</i> Nhận mã vé điện tử</span>
+          <span><i>3</i> Xem vé trong tài khoản</span>
         </div>
       </aside>
 
@@ -495,71 +403,10 @@ function BookingConfirmation({ token }) {
 
 export default function BookingPage() {
   const isCheckout = window.location.pathname === '/checkout'
-  const [session, setSession] = useState(readSession)
-  const [loginError, setLoginError] = useState('')
-  const [loginBusy, setLoginBusy] = useState(false)
-
-  async function login(credentials) {
-    setLoginBusy(true)
-    setLoginError('')
-    try {
-      const data = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(credentials),
-      })
-      if (data.user.role !== 'USER') throw new Error('Tài khoản quản lý không thể sử dụng chức năng đặt vé cá nhân.')
-      const nextSession = { token: data.token, user: data.user }
-      localStorage.setItem('eventbox-session', JSON.stringify(nextSession))
-      setSession(nextSession)
-      return true
-    } catch (error) {
-      setLoginError(error.message)
-      return false
-    } finally {
-      setLoginBusy(false)
-    }
-  }
-
-  async function register(registration) {
-    setLoginBusy(true)
-    setLoginError('')
-    try {
-      return await apiRequest('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(registration),
-      })
-    } catch (error) {
-      setLoginError(error.message)
-      return null
-    } finally {
-      setLoginBusy(false)
-    }
-  }
-
-  async function verifyRegistration(verification) {
-    setLoginBusy(true)
-    setLoginError('')
-    try {
-      const data = await apiRequest('/api/auth/verify-registration', {
-        method: 'POST',
-        body: JSON.stringify(verification),
-      })
-      const nextSession = { token: data.token, user: data.user }
-      localStorage.setItem('eventbox-session', JSON.stringify(nextSession))
-      setSession(nextSession)
-      return true
-    } catch (error) {
-      setLoginError(error.message)
-      return false
-    } finally {
-      setLoginBusy(false)
-    }
-  }
-
-  function logout() {
-    localStorage.removeItem('eventbox-session')
-    setSession(null)
-  }
+  const { user, token, loading, logout } = useAuth()
+  const session = user && token ? { user, token } : null
+  if (loading) return <main className="booking-main">Đang kiểm tra phiên đăng nhập...</main>
+  if (user && user.role !== 'USER') return <main className="booking-main"><h1>Chức năng dành cho khách hàng</h1><a href="/">Về trang quản lý sự kiện</a></main>
 
   return (
     <div className="booking-app">
@@ -591,7 +438,7 @@ export default function BookingPage() {
 
         {!session && (
           <div id="sign-in">
-            <LoginPanel error={loginError} busy={loginBusy} onLogin={login} onRegister={register} onVerify={verifyRegistration} />
+            <div className="auth-modal"><AuthForm /></div>
           </div>
         )}
         {session && isCheckout && <BookingConfirmation key={session.user.id} token={session.token} />}

@@ -185,8 +185,10 @@ export async function createReservation(pool, redisClient, input, userId) {
   let cacheRows;
 
   try {
+    await connection.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await connection.beginTransaction();
     transactionOpen = true;
+    await connection.execute('SELECT e.id FROM events e WHERE e.id = (SELECT event_id FROM event_showings WHERE id = ?) FOR UPDATE', [request.showingId]);
     const [showingRows] = await connection.execute(
           `SELECT s.id,
             DATE_FORMAT(s.sales_start_at, '%Y-%m-%dT%H:%i:%s.%fZ') AS sales_start_at,
@@ -346,8 +348,10 @@ export async function releaseReservation(pool, redisClient, reservationId, userI
   let transactionOpen = false;
   let status;
   try {
+    await connection.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await connection.beginTransaction();
     transactionOpen = true;
+    await connection.execute('SELECT e.id FROM events e WHERE e.id = (SELECT event_id FROM event_showings WHERE id = ?) FOR UPDATE', [lookupRows[0].showing_id]);
     await connection.execute('SELECT id FROM event_showings WHERE id = ? FOR UPDATE', [lookupRows[0].showing_id]);
     const [rows] = await connection.execute(
       `SELECT status, expires_at <= UTC_TIMESTAMP(3) AS is_expired

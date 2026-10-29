@@ -1,29 +1,32 @@
-# Backend API
+# EventBox API
 
-## Cấu hình
+API chung F01–F06 dùng MySQL 8 và Redis 7. Hướng dẫn tích hợp chi tiết: [docs/integration-f01-f06.md](../docs/integration-f01-f06.md).
 
-1. Sao chép `.env.example` thành `.env` ở thư mục gốc dự án.
-2. Điền cấu hình MySQL và `JWT_SECRET`.
-3. Để gửi OTP đăng ký, điền `RESEND_API_KEY` và `MAIL_FROM`. Địa chỉ gửi cần được Resend cho phép; không commit token thật.
-4. Chạy lần lượt `database/mysql/migrations/001_init_schema.sql` và `002_registration_otps.sql` trên MySQL 8.0+.
+Từ thư mục gốc repo:
 
-## API Transaction
-
-- `POST /api/auth/register`: tạo yêu cầu đăng ký và gửi OTP.
-- `POST /api/auth/verify-registration`: xác minh email, tạo tài khoản và trả JWT.
-- `GET /api/showings/on-sale`: danh sách suất diễn đang mở bán, giá và tồn khả dụng.
-- `POST /api/reservations`: tạo phiếu giữ vé F04 bằng `request_key`, `showing_id`, `items`.
-- `GET /api/reservations/:reservationId`: đọc trạng thái phiếu giữ của chủ sở hữu.
-- `POST /api/reservations/:reservationId/release`: bỏ giữ vé.
-- `POST /api/bookings/confirm` hoặc `POST /api/reservations/:reservationId/confirm`: xác nhận phiếu giữ vé.
-- `GET /api/bookings/my` hoặc `GET /api/me/bookings`: lịch sử đơn của người dùng đăng nhập.
-- `GET /api/bookings/:bookingCode`: chi tiết đơn và mã vé.
-- `POST /api/bookings/:bookingCode/cancel`: hủy toàn bộ đơn trước giờ diễn.
-
-Các endpoint giữ/đọc/nhả reservation và booking yêu cầu Bearer JWT của tài khoản `USER`; danh sách suất đang mở bán là public. F04 khóa hàng suất diễn trong MySQL để serialize việc giữ/xác nhận và ghi reservation/items trong transaction. Redis Lua ghi/xóa cache giữ vé với TTL; MySQL vẫn là nguồn quyết định, nên Redis không sẵn sàng thì thao tác giữ vẫn được kiểm tra và ghi bởi MySQL. OTP tồn tại 10 phút, tối đa 5 lần nhập sai; user chỉ được tạo sau khi xác minh thành công.
-
-## Kiểm thử
-
-```bash
-npm --prefix backend test
+```sh
+npm --prefix backend install
+npm --prefix backend run migrate
+npm --prefix backend run dev
 ```
+
+Database mới: khởi tạo qua `docker compose up -d mysql redis`. Database đã có: chỉ chạy `npm --prefix backend run migrate`, không chạy lại schema/seed.
+
+`.env` ở thư mục gốc: MYSQL_HOST, MYSQL_PORT, MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD, REDIS_HOST, REDIS_PORT, JWT_SECRET, FRONTEND_URL. OTP dùng SMTP_USER/SMTP_PASS (SMTP_SERVICE hoặc SMTP_HOST/PORT/SECURE) hoặc RESEND_API_KEY/MAIL_FROM.
+
+Auth:
+
+- POST `/api/auth/register`: email, full_name, password; tạo yêu cầu OTP, chưa tạo user.
+- POST `/api/auth/verify-registration`: email, code; tạo tài khoản và trả JWT.
+- POST `/api/auth/login`: email hoặc username, password; trả JWT.
+- GET `/api/auth/me`: Bearer JWT.
+- POST `/api/auth/logout`: frontend xóa token; JWT có hiệu lực đến hết hạn.
+
+Routes `/api/admin/*` dành cho MANAGER. `/api/events*` và `/api/showings/on-sale` công khai. Routes reservations/bookings kiểm tra USER và quyền sở hữu.
+
+```sh
+npm --prefix backend test
+npm --prefix backend run test:integration:docker
+```
+
+Runner tích hợp Docker dùng database thử riêng và tự dọn dẹp, không gửi email.

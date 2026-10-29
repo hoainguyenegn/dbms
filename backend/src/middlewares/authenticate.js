@@ -13,7 +13,7 @@ export function requireAuth(request, response, next) {
 
   try {
     const claims = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
-    const id = Number(claims.sub);
+    const id = Number(claims.sub ?? claims.id);
     if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid token subject');
     request.user = { id, role: claims.role };
     return next();

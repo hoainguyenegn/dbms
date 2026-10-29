@@ -24,6 +24,10 @@ function createPool({ existingBooking = false, failOnTicket = false } = {}) {
       return [[{ now_utc: '2026-10-04T12:00:00.000000Z' }], []];
     },
     async execute(sql) {
+      if (sql.startsWith('SET TRANSACTION')) return [[], []];
+      if (sql.includes('SELECT showing_id FROM bookings WHERE booking_code')) return [[{ showing_id: 12 }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: 12 }], []];
+      if (sql.includes('SELECT e.id FROM events e')) return [[{ id: 1 }], []];
       if (sql.includes('SELECT showing_id FROM reservations WHERE id')) return [[{ showing_id: reservation.showing_id }], []];
       if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: reservation.showing_id }], []];
       if (sql.includes('FROM reservations r')) return [[reservation], []];
@@ -54,6 +58,10 @@ function createPool({ existingBooking = false, failOnTicket = false } = {}) {
   const pool = {
     getConnection: async () => connection,
     async execute(sql) {
+      if (sql.startsWith('SET TRANSACTION')) return [[], []];
+      if (sql.includes('SELECT showing_id FROM bookings WHERE booking_code')) return [[{ showing_id: 12 }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: 12 }], []];
+      if (sql.includes('SELECT e.id FROM events e')) return [[{ id: 1 }], []];
       if (sql.includes('JOIN event_showings')) {
         return [[{
           id: 41,
@@ -96,6 +104,10 @@ function createCancellationPool({ status = 'CONFIRMED', startsAt = '2026-10-06T1
     release() { calls.releases += 1; },
     async query() { return [[{ now_utc: '2026-10-04T12:00:00.000000Z' }], []]; },
     async execute(sql) {
+      if (sql.startsWith('SET TRANSACTION')) return [[], []];
+      if (sql.includes('SELECT showing_id FROM bookings WHERE booking_code')) return [[{ showing_id: 12 }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: 12 }], []];
+      if (sql.includes('SELECT e.id FROM events e')) return [[{ id: 1 }], []];
       if (sql.includes('FROM bookings b')) return [[booking], []];
       if (sql.includes('UPDATE bookings')) {
         calls.updates += 1;
@@ -108,6 +120,10 @@ function createCancellationPool({ status = 'CONFIRMED', startsAt = '2026-10-06T1
   const pool = {
     getConnection: async () => connection,
     async execute(sql) {
+      if (sql.startsWith('SET TRANSACTION')) return [[], []];
+      if (sql.includes('SELECT showing_id FROM bookings WHERE booking_code')) return [[{ showing_id: 12 }], []];
+      if (sql.includes('SELECT id FROM event_showings WHERE id')) return [[{ id: 12 }], []];
+      if (sql.includes('SELECT e.id FROM events e')) return [[{ id: 1 }], []];
       if (sql.includes('JOIN event_showings')) {
         return [[{
           id: 41,

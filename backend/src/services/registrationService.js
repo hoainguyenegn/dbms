@@ -10,12 +10,12 @@ export class RegistrationError extends Error {
 }
 
 export function validateRegistrationInput(input) {
-  const username = typeof input?.username === 'string' ? input.username.trim() : '';
+  const username = typeof input?.username === 'string' ? input.username.trim() : (typeof input?.email === 'string' ? input.email.trim().toLowerCase() : '');
   const fullName = typeof input?.full_name === 'string' ? input.full_name.trim() : '';
   const email = typeof input?.email === 'string' ? input.email.trim().toLowerCase() : '';
   const password = typeof input?.password === 'string' ? input.password : '';
 
-  if (!/^[a-zA-Z0-9_]{3,50}$/.test(username)) {
+  if (!/^[a-zA-Z0-9_]{3,50}$/.test(username) && username !== email) {
     throw new RegistrationError(400, 'INVALID_USERNAME', 'Tên đăng nhập cần có 3–50 ký tự chữ, số hoặc gạch dưới.');
   }
   if (!fullName || fullName.length > 100) {
@@ -24,8 +24,8 @@ export function validateRegistrationInput(input) {
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new RegistrationError(400, 'INVALID_EMAIL', 'Địa chỉ email không hợp lệ.');
   }
-  if (password.length < 8 || password.length > 200) {
-    throw new RegistrationError(400, 'INVALID_PASSWORD', 'Mật khẩu cần ít nhất 8 ký tự và tối đa 200 ký tự.');
+  if (password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
+    throw new RegistrationError(400, 'INVALID_PASSWORD', 'Mật khẩu cần ít nhất 8 ký tự và tối đa 72 byte.');
   }
   return { username, fullName, email, password };
 }

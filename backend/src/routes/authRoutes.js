@@ -12,15 +12,16 @@ router.post('/verify-registration', verify);
 
 router.post('/login', async (request, response, next) => {
   try {
-    const username = typeof request.body?.username === 'string' ? request.body.username.trim() : '';
+    const input = request.body?.email ?? request.body?.username;
+    const username = typeof input === 'string' ? input.trim() : '';
     const password = typeof request.body?.password === 'string' ? request.body.password : '';
-    if (!username || !password || username.length > 50 || password.length > 200) {
+    if (!username || !password || username.length > 254 || password.length > 200) {
       return response.status(400).json({ error: 'INVALID_CREDENTIALS', message: 'Tên đăng nhập hoặc mật khẩu không hợp lệ.' });
     }
 
     const [rows] = await mysqlPool.execute(
-      'SELECT id, username, password_hash, full_name, email, role FROM users WHERE username = ? LIMIT 1',
-      [username],
+      'SELECT id, username, password_hash, full_name, email, role FROM users WHERE email = ? OR username = ? LIMIT 1',
+      [username, username],
     );
     const user = rows[0];
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
@@ -37,7 +38,7 @@ router.post('/login', async (request, response, next) => {
     );
     return response.json({
       token,
-      user: { id: user.id, username: user.username, fullName: user.full_name, email: user.email, role: user.role },
+      user: { id: user.id, username: user.username, fullName: user.full_name, full_name: user.full_name, email: user.email, role: user.role },
     });
   } catch (error) {
     return next(error);
@@ -52,10 +53,12 @@ router.get('/me', requireAuth, async (request, response, next) => {
     );
     if (!rows[0]) return response.status(401).json({ error: 'INVALID_SESSION', message: 'Tài khoản không còn tồn tại.' });
     const user = rows[0];
-    return response.json({ user: { id: user.id, username: user.username, fullName: user.full_name, email: user.email, role: user.role } });
+    return response.json({ user: { id: user.id, username: user.username, fullName: user.full_name, full_name: user.full_name, email: user.email, role: user.role } });
   } catch (error) {
     return next(error);
   }
 });
+
+router.post('/logout', requireAuth, (_req, res) => res.json({ message: 'Đã đăng xuất.' }));
 
 export default router;

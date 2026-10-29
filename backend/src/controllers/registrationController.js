@@ -11,7 +11,7 @@ export const register = asyncRoute(async (request, response) => {
   if (!hasEmailDeliveryConfig()) {
     return response.status(503).json({
       error: 'EMAIL_NOT_CONFIGURED',
-      message: 'Cần cấu hình RESEND_API_KEY và MAIL_FROM để gửi email xác minh.',
+      message: 'Cần cấu hình SMTP hoặc RESEND_API_KEY và MAIL_FROM để gửi email xác minh.',
     });
   }
   const result = await requestRegistration(mysqlPool, request.body, sendRegistrationCode);

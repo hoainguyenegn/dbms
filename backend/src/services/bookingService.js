@@ -84,6 +84,7 @@ export async function confirmReservation(pool, reservationId, userId) {
   let transactionOpen = false;
 
   try {
+    await connection.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await connection.beginTransaction();
     transactionOpen = true;
 
@@ -94,6 +95,7 @@ export async function confirmReservation(pool, reservationId, userId) {
     if (!reservationLookupRows[0]) {
       throw new BookingError(404, 'RESERVATION_NOT_FOUND', 'Không tìm thấy phiếu giữ vé.');
     }
+    await connection.execute('SELECT e.id FROM events e WHERE e.id = (SELECT event_id FROM event_showings WHERE id = ?) FOR UPDATE', [reservationLookupRows[0].showing_id]);
     await connection.execute(
       'SELECT id FROM event_showings WHERE id = ? FOR UPDATE',
       [reservationLookupRows[0].showing_id],
@@ -170,9 +172,9 @@ export async function confirmReservation(pool, reservationId, userId) {
       const quantity = Number(item.quantity);
       const unitPrice = Number(item.price_vnd);
       await connection.execute(
-        `INSERT INTO booking_items (booking_id, ticket_type_id, showing_id, unit_price_vnd, quantity, subtotal_vnd)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [bookingId, item.ticket_type_id, reservation.showing_id, unitPrice, quantity, unitPrice * quantity],
+        `INSERT INTO booking_items (booking_id, ticket_type_id, showing_id, unit_price_vnd, quantity)
+         VALUES (?, ?, ?, ?, ?)`,
+        [bookingId, item.ticket_type_id, reservation.showing_id, unitPrice, quantity],
       );
 
       for (let ordinal = 1; ordinal <= quantity; ordinal += 1) {
@@ -243,8 +245,13 @@ export async function cancelBooking(pool, bookingCode, userId) {
   let transactionOpen = false;
 
   try {
+    await connection.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await connection.beginTransaction();
     transactionOpen = true;
+    const [lookup] = await connection.execute('SELECT showing_id FROM bookings WHERE booking_code = ? AND user_id = ?', [bookingCode, userId]);
+    if (!lookup[0]) throw new BookingError(404, 'BOOKING_NOT_FOUND', 'Không tìm thấy đơn hàng.');
+    await connection.execute('SELECT e.id FROM events e WHERE e.id = (SELECT event_id FROM event_showings WHERE id = ?) FOR UPDATE', [lookup[0].showing_id]);
+    await connection.execute('SELECT id FROM event_showings WHERE id = ? FOR UPDATE', [lookup[0].showing_id]);
     const [rows] = await connection.execute(
       `SELECT b.id, b.status,
               DATE_FORMAT(s.starts_at, '%Y-%m-%dT%H:%i:%s.%fZ') AS starts_at

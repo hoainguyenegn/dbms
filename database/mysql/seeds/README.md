@@ -1,28 +1,13 @@
-# MySQL Seed Fixtures
+# Dữ liệu mẫu local
 
-Chạy `001_seed_fixture.sql` sau migrations `001_init_schema.sql` và `002_registration_otps.sql` để nạp dữ liệu demo EventBox. Script dùng mã nghiệp vụ cố định và `ON DUPLICATE KEY UPDATE`, nên có thể chạy lại để reset fixture.
+`001_seed_fixture.sql` cung cấp danh mục sự kiện, suất diễn và loại vé cho bản chung. Chạy sau schema/migrations khi khởi tạo database mới; Docker Compose tự chạy ở lần tạo volume đầu tiên.
 
-## Tài khoản demo
-
-| Username | Password | Role |
+| Email | Mật khẩu demo | Vai trò |
 | --- | --- | --- |
-| `user01` | `EventBoxDemo123!` | `USER` |
-| `manager01` | `EventBoxManager123!` | `MANAGER` |
+| manager@eventbox.vn | password123 | MANAGER |
+| customer1@gmail.com | password123 | USER |
+| customer2@gmail.com | password123 | USER |
 
-Đây là thông tin giả lập cho môi trường local/demo, không dùng lại mật khẩu này ở môi trường thật.
+Mật khẩu chỉ dành cho fixture local. Database đã tồn tại giữ nguyên tài khoản/mật khẩu trước đó; không tự cập nhật khi chạy migration.
 
-## Fixture booking
-
-- Reservation `f7e8de3b-bdd9-4ab8-bfaf-a60ff0bf3c73`: trạng thái `ACTIVE`, giữ 2 vé Standard, hết hạn sau 5 phút. Dùng UUID này với `POST /api/bookings/confirm` sau khi đăng nhập bằng `user01`.
-- Booking `BK-DEMO-CONFIRMED`: 2 vé Standard, tổng 700.000 VND; dùng để xem lịch sử hoặc thử hủy trước giờ diễn.
-- Booking `BK-DEMO-CANCELLED`: 1 vé VIP, tổng 750.000 VND; dùng để xác nhận đơn hủy vẫn còn trong lịch sử và vé mất hiệu lực.
-
-Suất diễn được đặt tương đối theo UTC: đang mở bán, diễn ra sau khoảng 8 ngày. Reservation active hết hạn sau 5 phút kể từ lúc chạy seed.
-
-## Chạy bằng MySQL CLI
-
-Chọn database trước hoặc truyền database ở cuối lệnh:
-
-```bash
-mysql -h <HOST> -P <PORT> -u <USER> -p <DATABASE_NAME> < database/mysql/seeds/001_seed_fixture.sql
-```
+Không cần seed booking cố định: đăng nhập USER, chọn vé, giữ vé và xác nhận qua giao diện để tạo đơn. Không chạy seed reset đơn/vé từ nhánh cũ trên database dùng chung. Các mốc thời gian seed là UTC trong tháng 11–12/2026; khi demo sau đó cần tạo sự kiện với lịch còn hiệu lực.

@@ -1,15 +1,21 @@
 import app from './app.js';
+import { createServer } from 'node:http';
 import { mysqlPool, redisClient } from './config/database.js';
 
 const port = Number(process.env.PORT || 3000);
-const server = app.listen(port, '127.0.0.1', () => {
+const server = createServer(app);
+server.once('listening', () => {
   console.log(`API: http://localhost:${server.address().port}`);
 });
 
 server.on('error', (error) => {
-  console.error('Cannot start API:', error.message);
+  console.error(error.code === 'EADDRINUSE'
+    ? `Cannot start API: port ${port} is already in use. Stop the other API process or choose another PORT.`
+    : `Cannot start API: ${error.message}`);
   process.exit(1);
 });
+
+server.listen(port, '127.0.0.1');
 
 // API vẫn phản hồi /health khi Redis chưa sẵn sàng; client tự thử kết nối lại.
 redisClient.connect().catch((error) => {
