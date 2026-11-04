@@ -425,3 +425,22 @@
   background: #e2e8f0;
   margin: 0 8px 16px;
 }
+
+/* Inline authentication cards use document scrolling; only overlays are height-limited. */
+.auth-page { display: grid; place-items: center; padding: 48px 20px 56px; width: 100%; min-width: 0; }
+.auth-page-inline { padding: 16px 0 32px; scroll-margin-top: var(--site-header-offset, 88px); }
+.auth-card { width: 100%; max-width: 460px; min-width: 0; background: #fff; border: 1px solid #e4e9f0; border-radius: 18px; box-shadow: 0 12px 40px rgba(29,53,87,.06); overflow: hidden; }
+.auth-card .auth-header { padding-top: 30px; }
+.account-summary { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 36px 28px; text-align: center; }
+.account-summary h1 { font-size: 24px; color: #1d3557; }
+.account-avatar { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #fff0f1; color: #ce2e3c; font-size: 24px; font-weight: 700; }
+.account-email { color: #64748b; overflow-wrap: anywhere; }
+.account-summary .auth-submit-btn { margin-top: 8px; }
+.account-loading { padding: 48px 24px; text-align: center; color: #64748b; }
+@media (max-width: 560px) {
+  .auth-page { padding: 28px 16px 36px; }
+  .auth-page-inline { padding: 12px 0 24px; }
+  .auth-card { border-radius: 14px; }
+  .auth-card .auth-header { padding: 24px 20px 16px; }
+  .auth-card .auth-form { padding-right: 20px; padding-left: 20px; }
+}

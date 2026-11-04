@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './BookingPage.css'
 import { useAuth } from '../context/useAuth'
 import AuthForm from '../components/AuthForm'
@@ -74,8 +74,10 @@ function BookingHistory({ token }) {
   const [error, setError] = useState('')
   const [expandedCode, setExpandedCode] = useState('')
   const [details, setDetails] = useState(null)
+  const [detailsError, setDetailsError] = useState('')
   const [cancelTarget, setCancelTarget] = useState(null)
   const [busy, setBusy] = useState(false)
+  const detailsRequest = useRef(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -95,6 +97,8 @@ function BookingHistory({ token }) {
       })
     return () => controller.abort()
   }, [page, retry, token])
+
+  useEffect(() => () => detailsRequest.current?.abort(), [])
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60000)
@@ -118,20 +122,23 @@ function BookingHistory({ token }) {
     return matchesFilter && matchesQuery
   })
 
-  async function toggleDetails(bookingCode) {
-    if (expandedCode === bookingCode) {
+  async function toggleDetails(bookingCode, force = false) {
+    detailsRequest.current?.abort()
+    if (expandedCode === bookingCode && !force) {
       setExpandedCode('')
       setDetails(null)
       return
     }
+    const controller = new AbortController()
+    detailsRequest.current = controller
     setExpandedCode(bookingCode)
     setDetails(null)
-    setError('')
+    setDetailsError('')
     try {
-      const data = await apiRequest(`/api/bookings/${encodeURIComponent(bookingCode)}`, { token })
-      setDetails(data.booking)
+      const data = await apiRequest(`/api/bookings/${encodeURIComponent(bookingCode)}`, { token, signal: controller.signal })
+      if (!controller.signal.aborted) setDetails(data.booking)
     } catch (requestError) {
-      setError(requestError.message)
+      if (requestError.name !== 'AbortError') setDetailsError(requestError.message)
     }
   }
 
@@ -164,14 +171,13 @@ function BookingHistory({ token }) {
   return (
     <>
       <div className="booking-toolbar">
-        <div className="booking-tabs" role="tablist" aria-label="Lọc đơn vé">
+        <div className="booking-tabs" role="group" aria-label="Lọc vé">
           {filters.map((item) => (
             <button
-              aria-selected={filter === item.id}
+              aria-pressed={filter === item.id}
               className={filter === item.id ? 'booking-tab active' : 'booking-tab'}
               key={item.id}
               onClick={() => setFilter(item.id)}
-              role="tab"
             >
               {item.label}
             </button>
@@ -182,7 +188,7 @@ function BookingHistory({ token }) {
           <input
             aria-label="Tìm theo mã đơn hoặc tên sự kiện"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm đơn vé"
+            placeholder="Tìm vé của bạn"
             type="search"
             value={query}
           />
@@ -235,7 +241,7 @@ function BookingHistory({ token }) {
                     <div className="order-meta">
                       <span>{booking.ticketCount} vé</span>
                       <span>{formatMoney(booking.totalAmountVnd)}</span>
-                      <span>Đặt {formatDate(booking.bookedAt)}</span>
+
                     </div>
                   </div>
                   <button
@@ -243,18 +249,19 @@ function BookingHistory({ token }) {
                     className="order-details-button"
                     onClick={() => toggleDetails(booking.bookingCode)}
                   >
-                    {isExpanded ? 'Thu gọn' : 'Chi tiết'}
+                    {isExpanded ? 'Thu gọn' : 'Xem vé'}
                   </button>
                 </div>
                 {isExpanded && (
                   <div className="order-details">
-                    {!details && <p className="details-loading">Đang tải vé…</p>}
+                    {!details && !detailsError && <p className="details-loading">Đang tải vé…</p>}
+                    {detailsError && <div className="booking-detail-error"><p role="alert">{detailsError}</p><button className="booking-button booking-button-outline" onClick={() => toggleDetails(booking.bookingCode, true)}>Thử lại</button></div>}
                     {details && (
                       <>
                         <div className="detail-head">
-                          <div><span className="detail-label">Tổng thanh toán nội bộ</span><strong>{formatMoney(details.totalAmountVnd)}</strong></div>
+                          <div><span className="detail-label">Tổng tiền</span><strong>{formatMoney(details.totalAmountVnd)}</strong></div>
                           {canCancel && (
-                            <button className="cancel-link" onClick={() => setCancelTarget(booking)}>
+                            <button className="cancel-link" onClick={() => { setError(''); setCancelTarget(booking) }}>
                               Hủy đơn
                             </button>
                           )}
@@ -297,11 +304,11 @@ function BookingHistory({ token }) {
           if (event.target === event.currentTarget && !busy) setCancelTarget(null)
         }}>
           <section aria-labelledby="cancel-title" aria-modal="true" className="booking-modal" role="dialog">
-            <p className="booking-eyebrow">XÁC NHẬN THAO TÁC</p>
-            <h2 id="cancel-title">Hủy toàn bộ đơn vé?</h2>
-            <p>Đơn {cancelTarget.bookingCode} sẽ chuyển sang trạng thái đã hủy. Vé sẽ không còn hiệu lực.</p>
-            <div className="modal-actions">
-              <button className="booking-button booking-button-outline" disabled={busy} onClick={() => setCancelTarget(null)}>Giữ đơn</button>
+                        <h2 id="cancel-title">Bạn muốn hủy vé?</h2>
+            <p>Toàn bộ vé cho {cancelTarget.event.title} trong đơn này sẽ không còn hiệu lực.</p>
+            {error && <p className="booking-alert" role="alert">{error}</p>}
+            <div className="booking-modal-actions">
+              <button className="booking-button booking-button-outline" disabled={busy} onClick={() => setCancelTarget(null)}>Giữ lại vé</button>
               <button className="booking-button booking-button-danger" disabled={busy} onClick={confirmCancellation}>
                 {busy ? 'Đang xử lý…' : 'Xác nhận hủy'}
               </button>
@@ -314,138 +321,137 @@ function BookingHistory({ token }) {
 }
 
 function BookingConfirmation({ token }) {
-  const [reservationId, setReservationId] = useState(() => (
-    new URLSearchParams(window.location.search).get('reservation') || ''
-  ))
+  const [reservationId] = useState(() => (new URLSearchParams(window.location.search).get('reservation') || '').trim())
+  const hasReservation = reservationPattern.test(reservationId)
+  const [reservation, setReservation] = useState(null)
+  const [phase, setPhase] = useState(hasReservation ? 'loading' : 'missing')
+  const [retry, setRetry] = useState(0)
   const [booking, setBooking] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!hasReservation) return
+    const controller = new AbortController()
+    apiRequest(`/api/reservations/${encodeURIComponent(reservationId)}`, { token, signal: controller.signal })
+      .then(data => {
+        if (controller.signal.aborted) return
+        setReservation(data.reservation)
+        setPhase('ready')
+        setError('')
+      })
+      .catch(requestError => {
+        if (requestError.name === 'AbortError') return
+        setError(requestError.message)
+        setPhase('error')
+      })
+    return () => controller.abort()
+  }, [hasReservation, reservationId, retry, token])
+
+  useEffect(() => {
+    if (!reservation || booking) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [reservation, booking])
+
+  const expiresAt = new Date(reservation?.expiresAt).getTime()
+  const secondsLeft = Number.isFinite(expiresAt) ? Math.max(0, Math.ceil((expiresAt - now) / 1000)) : 0
+  const isActive = reservation?.status === 'ACTIVE' && secondsLeft > 0
+  const alreadyConfirmed = reservation?.status === 'CONSUMED'
+
+  function reload() {
+    setPhase('loading')
+    setError('')
+    setRetry(value => value + 1)
+  }
 
   async function submit(event) {
     event.preventDefault()
-    setError('')
-    setBooking(null)
-    if (!reservationPattern.test(reservationId.trim())) {
-      setError('Mã phiếu cần có định dạng UUID hợp lệ.')
+    if (busy || !reservation) return
+    if (!alreadyConfirmed && (reservation.status !== 'ACTIVE' || expiresAt <= Date.now())) {
+      setError('Thời gian giữ vé đã hết. Vui lòng chọn vé lại.')
       return
     }
     setBusy(true)
+    setError('')
     try {
       const data = await apiRequest('/api/bookings/confirm', {
         token,
         method: 'POST',
-        body: JSON.stringify({ reservation_id: reservationId.trim() }),
+        body: JSON.stringify({ reservation_id: reservationId }),
       })
       setBooking(data.booking)
+      sessionStorage.removeItem('eventbox-active-reservation')
     } catch (requestError) {
       setError(requestError.message)
+      if (['RESERVATION_EXPIRED', 'RESERVATION_NOT_ACTIVE', 'SHOWING_NOT_ON_SALE', 'EVENT_NOT_ON_SALE'].includes(requestError.code)) {
+        setReservation(current => ({ ...current, status: 'EXPIRED' }))
+      }
     } finally {
       setBusy(false)
     }
   }
 
-  return (
-    <div className="confirmation-layout">
-      <section className="confirmation-form-panel">
-        <p className="booking-eyebrow">HOÀN TẤT ĐẶT VÉ</p>
-        <h2>Xác nhận phiếu giữ</h2>
-        <p className="confirmation-copy">Phiếu giữ sẽ được kiểm tra lại về thời hạn, lịch bán và quyền sở hữu trước khi tạo đơn.</p>
-        <form onSubmit={submit}>
-          <label htmlFor="reservation-id">Mã phiếu giữ vé</label>
-          <input
-            autoComplete="off"
-            id="reservation-id"
-            onChange={(event) => setReservationId(event.target.value)}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            spellCheck="false"
-            value={reservationId}
-          />
-          {error && <p className="booking-alert" role="alert">{error}</p>}
-          <button className="booking-button booking-button-primary confirm-submit" disabled={busy}>
-            {busy ? 'Đang xác nhận…' : 'Xác nhận đặt vé'}
-          </button>
-        </form>
-        <p className="confirmation-footnote">Đây là bước xác nhận đặt vé nội bộ, không phát sinh thanh toán ngân hàng.</p>
-      </section>
+  if (phase === 'missing') return <section className="booking-state booking-empty">
+    <h2>Bạn chưa chọn vé</h2><p>Chọn sự kiện và số lượng vé trước khi xác nhận.</p>
+    <a className="booking-button booking-button-primary" href="/reserve">Chọn vé</a>
+  </section>
+  if (phase === 'loading') return <div className="booking-state" role="status">Đang tải thông tin vé…</div>
+  if (phase === 'error') return <section className="booking-state">
+    <h2>Chưa tải được thông tin vé</h2><p role="alert">{error}</p>
+    <div className="booking-state-actions"><button className="booking-button booking-button-outline" onClick={reload}>Thử lại</button><a className="booking-button booking-button-primary" href="/reserve">Chọn vé lại</a></div>
+  </section>
 
-      <aside className="confirmation-aside">
-        <span className="aside-index">01 / 02</span>
-        <h3>Vé của bạn, sẵn sàng cho sự kiện</h3>
-        <p>Kiểm tra phiếu giữ và xác nhận để nhận mã vé. Bạn có thể xem lại vé bất cứ lúc nào trong mục Vé của tôi.</p>
-        <div className="transaction-steps">
-          <span><i>1</i> Kiểm tra phiếu giữ</span>
-          <span><i>2</i> Nhận mã vé điện tử</span>
-          <span><i>3</i> Xem vé trong tài khoản</span>
-        </div>
-      </aside>
+  if (booking) return <section className="confirmation-success" aria-live="polite">
+    <div className="success-heading"><span className="success-check" aria-hidden="true">✓</span><div><h2>{booking.status === 'CANCELLED' ? 'Đơn vé đã hủy' : 'Đặt vé thành công'}</h2><p>{booking.event.title}</p></div></div>
+    <div className="success-meta"><span>{formatDate(booking.showing.startsAt)}</span><span>{booking.showing.venue}</span><span>{booking.ticketCount} vé · {formatMoney(booking.totalAmountVnd)}</span></div>
+    <TicketList booking={booking} />
+    <a className="booking-button booking-button-primary" href="/my-tickets">Xem vé của tôi</a>
+  </section>
 
-      {booking && (
-        <section className="confirmation-success" aria-live="polite">
-          <div className="success-heading">
-            <span className="success-check" aria-hidden="true">✓</span>
-            <div>
-              <p className="booking-eyebrow">ĐẶT VÉ THÀNH CÔNG</p>
-              <h2>{booking.event.title}</h2>
-            </div>
-          </div>
-          <div className="success-meta">
-            <span>Mã đơn <strong>{booking.bookingCode}</strong></span>
-            <span>{booking.ticketCount} vé <strong>{formatMoney(booking.totalAmountVnd)}</strong></span>
-            <span>{formatDate(booking.showing.startsAt)} · {booking.showing.venue}</span>
-          </div>
-          <TicketList booking={booking} />
-          <a className="booking-button booking-button-outline" href="/my-tickets">Mở lịch sử vé</a>
-        </section>
-      )}
+  return <form className="checkout-card" onSubmit={submit}>
+    <div className="checkout-event"><span className="checkout-kicker">THÔNG TIN SỰ KIỆN</span><h2>{reservation.event?.title || 'Vé sự kiện'}</h2><p>{formatDate(reservation.showing?.startsAt)}</p><p>{reservation.showing?.venue}{reservation.showing?.city ? ` · ${reservation.showing.city}` : ''}</p></div>
+    <div className="checkout-items" aria-label="Vé đã chọn">
+      {reservation.items.map(item => <div className="checkout-line" key={item.ticketTypeId}><div><strong>{item.ticketType}</strong><span>{item.quantity} vé × {formatMoney(item.unitPriceVnd)}</span></div><strong>{formatMoney(item.subtotalVnd)}</strong></div>)}
     </div>
-  )
+    <div className="checkout-total"><span>Tổng cộng</span><strong>{formatMoney(reservation.totalAmountVnd)}</strong></div>
+    {isActive ? <div className="checkout-hold"><span>Vé đang được giữ cho bạn</span><strong role="timer" aria-label="Thời gian giữ vé còn lại">{String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}</strong></div> : alreadyConfirmed ? <p className="checkout-notice">Vé đã được xác nhận. Bạn có thể xem lại đơn vé.</p> : <p className="booking-alert" role="status">Vé không còn được giữ. Vui lòng chọn lại để tiếp tục.</p>}
+    {error && <p className="booking-alert" role="alert">{error}</p>}
+    <div className="checkout-actions">
+      {isActive || alreadyConfirmed ? <><button type="submit" className="booking-button booking-button-primary" disabled={busy}>{busy ? 'Đang xác nhận…' : alreadyConfirmed ? 'Xem đơn vé' : 'Xác nhận đặt vé'}</button><a className="checkout-back" href="/reserve">Quay lại chọn vé</a></> : <a className="booking-button booking-button-primary" href="/reserve">Chọn vé lại</a>}
+    </div>
+  </form>
 }
 
 export default function BookingPage() {
-  const isCheckout = window.location.pathname === '/checkout'
-  const { user, token, loading, logout } = useAuth()
+  const isCheckout = window.location.pathname.replace(/\/+$/, '') === '/checkout'
+  const { user, token, loading } = useAuth()
   const session = user && token ? { user, token } : null
   if (loading) return <main className="booking-main">Đang kiểm tra phiên đăng nhập...</main>
-  if (user && user.role !== 'USER') return <main className="booking-main"><h1>Chức năng dành cho khách hàng</h1><a href="/">Về trang quản lý sự kiện</a></main>
+  if (user && user.role !== 'USER') return <main className="booking-main"><h1>Chức năng dành cho khách hàng</h1><a href="/admin/events">Về trang quản lý sự kiện</a></main>
 
   return (
     <div className="booking-app">
-      <header className="booking-header">
-        <a aria-label="EventBox trang chủ" className="booking-brand" href="/">
-          <span className="brand-ticket" aria-hidden="true">E</span>
-          EventBox
-        </a>
-        <nav aria-label="Điều hướng tài khoản" className="booking-nav">
-          <a href="/">Khám phá</a>
-          <a aria-current={!isCheckout ? 'page' : undefined} href="/my-tickets">Vé của tôi</a>
-          {session && <span className="booking-user">{session.user.fullName || session.user.username}</span>}
-          {session
-            ? <button onClick={logout}>Đăng xuất</button>
-            : <a href="#sign-in">Đăng nhập</a>}
-        </nav>
-      </header>
-
       <main className="booking-main">
         <div className="booking-breadcrumb"><a href="/">Trang chủ</a><span>/</span><span>{isCheckout ? 'Xác nhận đặt vé' : 'Vé của tôi'}</span></div>
         <section className="booking-title-row">
           <div>
-            <p className="booking-eyebrow">EVENTBOX / TÀI KHOẢN</p>
-            <h1>{isCheckout ? 'Xác nhận đặt vé' : 'Vé của tôi'}</h1>
-            <p>{isCheckout ? 'Hoàn tất đơn vé từ phiếu giữ còn hiệu lực.' : 'Theo dõi đơn hàng và mã vé điện tử của bạn.'}</p>
+            <h1>{isCheckout ? 'Kiểm tra đơn vé' : 'Vé của tôi'}</h1>
+            <p>{isCheckout ? 'Kiểm tra thông tin bên dưới trước khi xác nhận.' : 'Xem vé và quản lý các đơn đã đặt.'}</p>
           </div>
-          {session && <a className="booking-button booking-button-primary title-action" href={isCheckout ? '/my-tickets' : '/checkout'}>{isCheckout ? 'Lịch sử vé' : 'Xác nhận phiếu giữ'}</a>}
+          {session && <a className="booking-button booking-button-primary title-action" href={isCheckout ? '/my-tickets' : '/'}>{isCheckout ? 'Lịch sử vé' : 'Khám phá sự kiện'}</a>}
         </section>
 
         {!session && (
-          <div id="sign-in">
-            <div className="auth-modal"><AuthForm /></div>
+          <div id="sign-in" className="auth-page auth-page-inline">
+            <section className="auth-card" aria-label="Đăng nhập để xem vé"><AuthForm /></section>
           </div>
         )}
         {session && isCheckout && <BookingConfirmation key={session.user.id} token={session.token} />}
         {session && !isCheckout && <BookingHistory key={session.user.id} token={session.token} />}
       </main>
 
-      <footer className="booking-footer"><span>EventBox</span><span>Đơn vé được quản lý an toàn trong tài khoản của bạn.</span></footer>
     </div>
   )
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import './ReservationPage.css'
 import { useAuth } from '../context/useAuth'
+import './ReservationPage.css'
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 const ACTIVE_RESERVATION_KEY = 'eventbox-active-reservation'
+const REQUEST_KEY = 'eventbox-reservation-request'
 
 async function request(path, { token, ...options } = {}) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -16,303 +17,180 @@ async function request(path, { token, ...options } = {}) {
     },
   })
   const data = await response.json()
-  if (!response.ok) throw new Error(data?.message || 'Không thể xử lý yêu cầu giữ vé.')
+  if (!response.ok) throw Object.assign(new Error(data?.message || 'Chưa thể xử lý yêu cầu. Vui lòng thử lại.'), { status: response.status })
   return data
 }
-
-function formatMoney(value) {
-  return `${new Intl.NumberFormat('vi-VN').format(value || 0)} đ`
-}
-
-function formatDate(value) {
-  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'full', timeStyle: 'short' }).format(new Date(value))
-}
-
+const formatMoney = value => `${new Intl.NumberFormat('vi-VN').format(value || 0)} đ`
+const formatDate = value => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 function readStoredReservation() {
-  try {
-    return sessionStorage.getItem(ACTIVE_RESERVATION_KEY) || ''
-  } catch {
-    return ''
-  }
+  try { return sessionStorage.getItem(ACTIVE_RESERVATION_KEY) || '' } catch { return '' }
+}
+function readPendingRequest() {
+  try { return JSON.parse(sessionStorage.getItem(REQUEST_KEY) || 'null') } catch { return null }
 }
 
 export default function ReservationPage() {
   const { user, token, loading: authLoading, openAuthModal } = useAuth()
-  const session = user?.role === 'USER' && token ? { user, token } : null
+  const canBook = user?.role === 'USER' && Boolean(token)
   const [showings, setShowings] = useState([])
   const [showingId, setShowingId] = useState(() => new URLSearchParams(window.location.search).get('showing') || '')
   const [quantities, setQuantities] = useState({})
   const [reservation, setReservation] = useState(null)
+  const [reservationToken, setReservationToken] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [showingsError, setShowingsError] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [loadVersion, setLoadVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [now, setNow] = useState(0)
+  const [now, setNow] = useState(() => Date.now())
+  const [storedReservationId] = useState(readStoredReservation)
+  const [restoredToken, setRestoredToken] = useState(null)
+  const restoringHold = canBook && storedReservationId && restoredToken !== token
+  const expired = reservation?.status === 'ACTIVE' && new Date(reservation.expiresAt).getTime() <= now
+  const activeHold = canBook && reservationToken === token && reservation?.status === 'ACTIVE' && !expired
 
   useEffect(() => {
     const controller = new AbortController()
     request('/api/showings/on-sale', { signal: controller.signal })
-      .then((data) => {
+      .then(data => {
+        if (controller.signal.aborted) return
         setShowings(data.items)
-        setShowingId((current) => current || String(data.items[0]?.id || ''))
+        setShowingId(current => current || String(data.items[0]?.id || ''))
+        setLoadError('')
       })
-      .catch((requestError) => {
-        if (requestError.name !== 'AbortError') {
-          setShowingsError(true)
-          setError('Chưa tải được suất diễn. Kiểm tra backend và kết nối MySQL, rồi thử lại.')
+      .catch(err => {
+        if (err.name !== 'AbortError') setLoadError('Không tải được danh sách vé. Vui lòng thử lại.')
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [loadVersion, expired])
+
+  useEffect(() => {
+    if (!token || user?.role !== 'USER' || !storedReservationId) return undefined
+    const controller = new AbortController()
+    request(`/api/reservations/${encodeURIComponent(storedReservationId)}`, { token, signal: controller.signal })
+      .then(data => {
+        if (controller.signal.aborted) return
+        if (data.reservation.status === 'ACTIVE') {
+          setReservation(data.reservation)
+          setReservationToken(token)
+          setShowingId(String(data.reservation.showingId))
+        } else {
+          setReservation(null)
+          sessionStorage.removeItem(ACTIVE_RESERVATION_KEY)
         }
       })
-      .finally(() => setLoading(false))
+      .catch(err => {
+        if (err.name === 'AbortError') return
+        if ([401, 403, 404].includes(err.status)) { setReservation(null); sessionStorage.removeItem(ACTIVE_RESERVATION_KEY) }
+        else setError('Chưa thể tải vé đang giữ. Vui lòng tải lại trang để thử lại.')
+      })
+      .finally(() => { if (!controller.signal.aborted) setRestoredToken(token) })
     return () => controller.abort()
-  }, [])
+  }, [token, user?.role, storedReservationId])
 
   useEffect(() => {
-    if (!token || user?.role !== 'USER') return undefined
-    const reservationId = readStoredReservation()
-    if (!reservationId) return undefined
-    const controller = new AbortController()
-    request(`/api/reservations/${encodeURIComponent(reservationId)}`, {
-      token,
-      signal: controller.signal,
-    })
-      .then((data) => {
-        if (data.reservation.status === 'ACTIVE') setReservation(data.reservation)
-        else sessionStorage.removeItem(ACTIVE_RESERVATION_KEY)
-      })
-      .catch((requestError) => {
-        if (requestError.name === 'AbortError') return
-        sessionStorage.removeItem(ACTIVE_RESERVATION_KEY)
-      })
-    return () => controller.abort()
-  }, [token, user?.role])
-
-  useEffect(() => {
-    const tick = () => setNow(Date.now())
-    tick()
-    const interval = setInterval(tick, 1000)
+    const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
   }, [])
 
-  const selectedShowing = showings.find((item) => String(item.id) === showingId)
+  const selectedShowing = showings.find(item => String(item.id) === showingId)
   const selectedItems = selectedShowing?.ticketTypes
-    .filter((ticket) => Number(quantities[ticket.id]) > 0)
-    .map((ticket) => ({ ticket_type_id: ticket.id, quantity: Number(quantities[ticket.id]) })) || []
+    .filter(ticket => Number(quantities[ticket.id]) > 0)
+    .map(ticket => ({ ticket_type_id: ticket.id, quantity: Number(quantities[ticket.id]) })) || []
   const totalQuantity = selectedItems.reduce((total, item) => total + item.quantity, 0)
-  const totalAmount = selectedItems.reduce((total, item) => {
-    const ticket = selectedShowing.ticketTypes.find((entry) => entry.id === item.ticket_type_id)
-    return total + item.quantity * ticket.priceVnd
-  }, 0)
-  const secondsLeft = reservation
-    ? Math.max(0, Math.ceil((new Date(reservation.expiresAt).getTime() - now) / 1000))
-    : 0
-  const activeHold = reservation?.status === 'ACTIVE' && secondsLeft > 0
+  const totalAmount = selectedItems.reduce((total, item) => total + item.quantity * selectedShowing.ticketTypes.find(ticket => ticket.id === item.ticket_type_id).priceVnd, 0)
+  const secondsLeft = reservation ? Math.max(0, Math.ceil((new Date(reservation.expiresAt).getTime() - now) / 1000)) : 0
+  const countdown = `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`
+  const title = activeHold ? reservation.event?.title || selectedShowing?.eventTitle : selectedShowing?.eventTitle
+  const startsAt = activeHold ? reservation.showing?.startsAt || selectedShowing?.startsAt : selectedShowing?.startsAt
+  const venue = activeHold ? reservation.showing?.venue || selectedShowing?.venue : selectedShowing?.venue
+  const city = activeHold ? reservation.showing?.city || selectedShowing?.city : selectedShowing?.city
 
   function changeQuantity(ticket, delta) {
-    setError('')
     const current = Number(quantities[ticket.id] || 0)
-    const next = Math.max(0, Math.min(ticket.available, current + delta, current + delta <= 6 ? 6 : current))
-    const nextTotal = totalQuantity - current + next
-    if (nextTotal > 6) return
-    setQuantities((currentQuantities) => ({ ...currentQuantities, [ticket.id]: next }))
-  }
-
-  function changeShowing(value) {
-    setShowingId(value)
-    setQuantities({})
+    const next = Math.max(0, Math.min(Number(ticket.available), current + delta))
+    if (totalQuantity - current + next > 6) return
     setError('')
+    setQuantities(values => ({ ...values, [ticket.id]: next }))
   }
-
+  function reloadShowings() {
+    setLoading(true)
+    setLoadError('')
+    setLoadVersion(version => version + 1)
+  }
   async function placeHold() {
-    if (!session) {
-      setError('Đăng nhập bằng tài khoản khách hàng để giữ vé. Đăng nhập hoặc tạo tài khoản tại mục Vé của tôi.')
-      return
-    }
-    if (!selectedShowing || totalQuantity < 1 || totalQuantity > 6) {
-      setError('Chọn từ 1 đến 6 vé trước khi giữ.')
-      return
-    }
+    if (!canBook) { openAuthModal('login'); return }
+    if (!selectedShowing || totalQuantity < 1 || totalQuantity > 6) { setError('Vui lòng chọn từ 1 đến 6 vé.'); return }
     setBusy(true)
     setError('')
-    const payloadFingerprint = `${selectedShowing.id}:${JSON.stringify(selectedItems)}`
+    const fingerprint = `${user.id}:${selectedShowing.id}:${JSON.stringify(selectedItems)}`
     try {
-      const saved = JSON.parse(sessionStorage.getItem('eventbox-reservation-request') || 'null')
-      const requestKey = saved?.fingerprint === payloadFingerprint ? saved.requestKey : crypto.randomUUID()
-      sessionStorage.setItem('eventbox-reservation-request', JSON.stringify({ fingerprint: payloadFingerprint, requestKey }))
+      const saved = readPendingRequest()
+      const requestKey = saved?.fingerprint === fingerprint ? saved.requestKey : crypto.randomUUID()
+      sessionStorage.setItem(REQUEST_KEY, JSON.stringify({ fingerprint, requestKey }))
       const data = await request('/api/reservations', {
-        token: session.token,
-        method: 'POST',
-        body: JSON.stringify({
-          request_key: requestKey,
-          showing_id: selectedShowing.id,
-          items: selectedItems,
-        }),
+        token, method: 'POST', body: JSON.stringify({ request_key: requestKey, showing_id: selectedShowing.id, items: selectedItems }),
       })
       setReservation(data.reservation)
+      setReservationToken(token)
       sessionStorage.setItem(ACTIVE_RESERVATION_KEY, data.reservation.id)
-      sessionStorage.removeItem('eventbox-reservation-request')
-    } catch (requestError) {
-      setError(requestError.message)
-    } finally {
-      setBusy(false)
-    }
+      sessionStorage.removeItem(REQUEST_KEY)
+      window.location.assign(`/checkout?reservation=${encodeURIComponent(data.reservation.id)}`)
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
-
   async function releaseHold() {
-    if (!reservation || !session) return
+    if (!reservation || !canBook) return
     setBusy(true)
     setError('')
     try {
-      const data = await request(`/api/reservations/${encodeURIComponent(reservation.id)}/release`, {
-        token: session.token,
-        method: 'POST',
-      })
+      const data = await request(`/api/reservations/${encodeURIComponent(reservation.id)}/release`, { token, method: 'POST' })
       setReservation(data.reservation)
       sessionStorage.removeItem(ACTIVE_RESERVATION_KEY)
       setQuantities({})
-    } catch (requestError) {
-      setError(requestError.message)
-    } finally {
-      setBusy(false)
-    }
+      reloadShowings()
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
+  const summaryItems = activeHold ? reservation.items : selectedItems.map(item => {
+    const ticket = selectedShowing.ticketTypes.find(entry => entry.id === item.ticket_type_id)
+    return { ticketTypeId: ticket.id, ticketType: ticket.name, quantity: item.quantity, subtotalVnd: ticket.priceVnd * item.quantity }
+  })
 
-  const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, '0')
-  const seconds = String(secondsLeft % 60).padStart(2, '0')
-
-  return (
-    <div className="reservation-app">
-      <header className="reservation-header">
-        <a className="reservation-brand" href="/">EventBox</a>
-        <nav aria-label="Điều hướng người dùng">
-          <a href="/">Sự kiện</a>
-          <a href="/my-tickets">Vé của tôi</a>
-          {!session && <button className="reservation-login" onClick={() => openAuthModal()}>Đăng nhập</button>}
-        </nav>
-      </header>
-
-      <main className="reservation-main">
-        <p className="reservation-breadcrumb"><a href="/">Sự kiện</a><span>/</span>Chọn vé</p>
-        <div className="reservation-heading">
-          <div>
-            <p className="reservation-eyebrow">EVENTBOX / GIỮ VÉ</p>
-            <h1>Chọn vé sự kiện</h1>
-            <p>Chọn suất diễn và số lượng. Phiếu giữ có hiệu lực tối đa 5 phút.</p>
-          </div>
-          <a className="reservation-history-link" href="/my-tickets">Vé của tôi <span aria-hidden="true">↗</span></a>
-        </div>
-
-        {!authLoading && !session && (
-          <div className="reservation-signin" role="status">
-            <span className="signin-mark" aria-hidden="true">!</span>
-            <div><strong>Cần đăng nhập để giữ vé</strong><p>Đăng nhập hoặc tạo tài khoản khách hàng trước khi tiếp tục.</p></div>
-            <button className="reservation-login" onClick={() => openAuthModal()}>Đăng nhập</button>
-          </div>
-        )}
-
-        {error && <p className="reservation-alert" role="alert">{error}</p>}
-        {loading && <div className="reservation-state">Đang tải suất diễn đang mở bán…</div>}
-        {!loading && showingsError && (
-          <div className="reservation-state reservation-empty">
-            <span aria-hidden="true">!</span>
-            <h2>Không tải được suất diễn</h2>
-            <p>Hệ thống chưa trả được dữ liệu bán vé.</p>
-            <button className="reservation-retry" onClick={() => window.location.reload()}>Thử lại</button>
-          </div>
-        )}
-        {!loading && !showingsError && showings.length === 0 && (
-          <div className="reservation-state reservation-empty">
-            <span aria-hidden="true">▱</span>
-            <h2>Hiện chưa có suất diễn mở bán</h2>
-            <p>Hãy quay lại sau khi sự kiện được mở bán.</p>
-          </div>
-        )}
-
-        {!loading && selectedShowing && (
-          <div className="reservation-layout">
-            <section className="ticket-selection" aria-label="Chọn suất diễn và loại vé">
-              <label className="showing-select-label" htmlFor="showing-select">Suất diễn</label>
-              <select id="showing-select" value={showingId} onChange={(event) => changeShowing(event.target.value)} disabled={Boolean(activeHold)}>
-                {showings.map((showing) => (
-                  <option key={showing.id} value={showing.id}>
-                    {showing.eventTitle} · {formatDate(showing.startsAt)}
-                  </option>
-                ))}
-              </select>
-
-              <div className="selected-event-meta">
-                <div><span>ĐỊA ĐIỂM</span><strong>{selectedShowing.venue}, {selectedShowing.city}</strong></div>
-                <div><span>BẮT ĐẦU</span><strong>{formatDate(selectedShowing.startsAt)}</strong></div>
-              </div>
-
-              <div className="ticket-section-heading"><h2>Loại vé</h2><span>Giá đã gồm thuế</span></div>
-              <div className="ticket-options">
-                {selectedShowing.ticketTypes.map((ticket) => {
-                  const quantity = Number(quantities[ticket.id] || 0)
-                  const unavailable = ticket.available < 1
-                  return (
-                    <article className={`ticket-option${unavailable ? ' unavailable' : ''}`} key={ticket.id}>
-                      <div className="ticket-option-info">
-                        <h3>{ticket.name}</h3>
-                        <p>{unavailable ? 'Hết vé khả dụng' : `Còn ${ticket.available} vé`}</p>
-                      </div>
-                      <strong className="ticket-price">{formatMoney(ticket.priceVnd)}</strong>
-                      <div className="quantity-control" aria-label={`Số lượng ${ticket.name}`}>
-                        <button aria-label={`Giảm ${ticket.name}`} disabled={unavailable || quantity === 0 || Boolean(activeHold)} onClick={() => changeQuantity(ticket, -1)}>−</button>
-                        <output>{quantity}</output>
-                        <button aria-label={`Tăng ${ticket.name}`} disabled={unavailable || quantity >= ticket.available || totalQuantity >= 6 || Boolean(activeHold)} onClick={() => changeQuantity(ticket, 1)}>+</button>
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-              <p className="ticket-limit-note">Tối đa 6 vé trong một phiếu giữ.</p>
-            </section>
-
-            <aside className="reservation-summary" aria-label="Tóm tắt phiếu giữ">
-              {activeHold ? (
-                <>
-                  <p className="reservation-eyebrow">PHIẾU ĐANG GIỮ</p>
-                  <h2>Thời gian còn lại</h2>
-                  <div aria-live="polite" className="hold-countdown"><span>{minutes}</span><i>:</i><span>{seconds}</span></div>
-                  <p className="hold-expiry">Hết hạn {formatDate(reservation.expiresAt)}</p>
-                  <div className="summary-items">
-                    {reservation.items.map((item) => (
-                      <div className="summary-item" key={item.ticketTypeId}>
-                        <span>{item.ticketType} × {item.quantity}</span>
-                        <strong>{formatMoney(item.subtotalVnd)}</strong>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="summary-total"><span>Tạm tính</span><strong>{formatMoney(reservation.totalAmountVnd)}</strong></div>
-                  <a className="reservation-button reservation-button-primary" href={`/checkout?reservation=${encodeURIComponent(reservation.id)}`}>Tiếp tục xác nhận</a>
-                  <button className="reservation-release" disabled={busy} onClick={releaseHold}>{busy ? 'Đang nhả vé…' : 'Bỏ giữ vé'}</button>
-                  <p className="reservation-id">Mã phiếu: <code>{reservation.id}</code></p>
-                </>
-              ) : (
-                <>
-                  <p className="reservation-eyebrow">TÓM TẮT LỰA CHỌN</p>
-                  <h2>Vé của bạn</h2>
-                  {selectedItems.length === 0
-                    ? <p className="summary-empty">Chọn số lượng vé để xem tóm tắt.</p>
-                    : <div className="summary-items">
-                      {selectedItems.map((item) => {
-                        const ticket = selectedShowing.ticketTypes.find((entry) => entry.id === item.ticket_type_id)
-                        return <div className="summary-item" key={item.ticket_type_id}><span>{ticket.name} × {item.quantity}</span><strong>{formatMoney(ticket.priceVnd * item.quantity)}</strong></div>
-                      })}
-                    </div>}
-                  <div className="summary-total"><span>{totalQuantity} vé</span><strong>{formatMoney(totalAmount)}</strong></div>
-                  <button className="reservation-button reservation-button-primary" disabled={busy || totalQuantity < 1 || !session} onClick={placeHold}>
-                    {busy ? 'Đang giữ vé…' : 'Giữ vé trong 5 phút'}
-                  </button>
-                  <p className="summary-disclaimer">Chưa phát sinh thanh toán. Tồn vé sẽ được kiểm tra lại khi giữ.</p>
-                </>
-              )}
-            </aside>
-          </div>
-        )}
-      </main>
-
-      <footer className="reservation-footer"><span>EventBox</span><span>Giữ vé tạm thời · Xác nhận đơn bằng transaction MySQL</span></footer>
-    </div>
-  )
+  return <div className="reservation-app">
+    <main className="reservation-main">
+      <a className="reservation-back" href="/">← Sự kiện</a>
+      <div className="reservation-heading"><h1>Chọn vé</h1><p>Chọn loại vé và số lượng cho sự kiện của bạn.</p></div>
+      {error && <p className="reservation-alert" role="alert">{error}</p>}
+      {expired && <p className="reservation-notice" role="status">Thời gian giữ vé đã hết. Bạn có thể chọn vé để đặt lại.</p>}
+      {!authLoading && user?.role === 'MANAGER' && <p className="reservation-notice">Chức năng đặt vé dành cho tài khoản khách hàng. <a href="/admin/events">Quản lý sự kiện</a></p>}
+      {loading || restoringHold ? <div className="reservation-state" role="status">Đang tải vé...</div> : loadError && !activeHold ? <div className="reservation-state"><h2>Chưa thể tải vé</h2><p>{loadError}</p><button type="button" className="reservation-secondary" onClick={reloadShowings}>Thử lại</button></div> : !selectedShowing && !activeHold ? <div className="reservation-state"><h2>Suất diễn chưa mở bán hoặc đã ngừng bán</h2><p>Vui lòng chọn một sự kiện khác.</p><a className="reservation-secondary" href="/">Khám phá sự kiện</a></div> : <div className="reservation-layout">
+        <section className="ticket-selection" aria-label="Chọn loại vé">
+          {showings.length > 1 && !activeHold && <div className="showing-choice"><label htmlFor="showing-select">Suất diễn</label><select id="showing-select" value={showingId} disabled={busy} onChange={event => { setShowingId(event.target.value); setQuantities({}); setError('') }}>{showings.map(showing => <option key={showing.id} value={showing.id}>{showing.eventTitle} · {formatDate(showing.startsAt)}</option>)}</select></div>}
+          <div className="reservation-event"><h2>{title}</h2>{startsAt && <p>{formatDate(startsAt)}</p>}<p>{venue}{city ? ` · ${city}` : ''}</p></div>
+          {activeHold ? <div className="held-ticket-list">{reservation.items.map(item => <div className="held-ticket-row" key={item.ticketTypeId}><span>{item.ticketType}</span><strong>{item.quantity} vé</strong></div>)}</div> : <>
+            <div className="ticket-options">{selectedShowing.ticketTypes.map(ticket => {
+              const quantity = Number(quantities[ticket.id] || 0)
+              const soldOut = ticket.available < 1
+              return <article className={`ticket-option${soldOut ? ' is-sold-out' : ''}`} key={ticket.id}>
+                <div className="ticket-option-info"><h3>{ticket.name}</h3><p>{formatMoney(ticket.priceVnd)}</p>{soldOut && <span>Hết vé</span>}</div>
+                <div className="quantity-control" role="group" aria-label={`Số lượng vé ${ticket.name}`}><button type="button" aria-label={`Giảm ${ticket.name}`} disabled={busy || quantity === 0} onClick={() => changeQuantity(ticket, -1)}>−</button><output aria-live="polite">{quantity}</output><button type="button" aria-label={`Tăng ${ticket.name}`} disabled={busy || soldOut || quantity >= ticket.available || totalQuantity >= 6} onClick={() => changeQuantity(ticket, 1)}>+</button></div>
+              </article>
+            })}</div>
+            <p className="ticket-limit-note">Tối đa 6 vé mỗi lần đặt.</p>
+          </>}
+        </section>
+        <aside className="reservation-summary" aria-label="Tóm tắt đơn vé">
+          <h2>Đơn vé của bạn</h2>
+          {activeHold && <div className="hold-timer"><span>Thời gian giữ vé còn lại</span><strong role="timer" aria-label={`Còn ${Math.floor(secondsLeft / 60)} phút ${secondsLeft % 60} giây`}>{countdown}</strong></div>}
+          {summaryItems.length ? <div className="summary-items">{summaryItems.map(item => <div className="summary-item" key={item.ticketTypeId}><span>{item.ticketType} <small>× {item.quantity}</small></span><strong>{formatMoney(item.subtotalVnd)}</strong></div>)}</div> : <p className="summary-empty">Chọn vé để xem tổng tiền.</p>}
+          <div className="summary-total"><span>Tổng cộng</span><strong>{formatMoney(activeHold ? reservation.totalAmountVnd : totalAmount)}</strong></div>
+          {activeHold ? <>
+            <a className="reservation-primary" href={`/checkout?reservation=${encodeURIComponent(reservation.id)}`}>Tiếp tục</a>
+            <button type="button" className="reservation-release" disabled={busy} onClick={releaseHold}>{busy ? 'Đang xử lý...' : 'Bỏ giữ vé và chọn lại'}</button>
+          </> : !authLoading && !user ? <button type="button" className="reservation-primary" onClick={() => openAuthModal('login')}>Đăng nhập để tiếp tục</button> : <button type="button" className="reservation-primary" disabled={authLoading || busy || totalQuantity < 1 || !canBook} onClick={placeHold}>{busy ? 'Đang xử lý...' : 'Giữ vé và tiếp tục'}</button>}
+          {!activeHold && <p className="reservation-note">Vé sẽ được giữ tối đa 5 phút để bạn xác nhận.</p>}
+        </aside>
+      </div>}
+    </main>
+  </div>
 }

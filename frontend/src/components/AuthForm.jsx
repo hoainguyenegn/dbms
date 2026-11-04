@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useAuth } from '../context/useAuth'
 import './Auth.css'
 
 export default function AuthForm({ initialTab = 'login', onSuccess }) {
   const { login, register, verifyRegistration } = useAuth()
+  const formId = useId()
   const [tab, setTab] = useState(initialTab)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
@@ -38,13 +39,13 @@ export default function AuthForm({ initialTab = 'login', onSuccess }) {
     <form className="auth-form" onSubmit={submit}>
       {error && <div className="auth-error-banner" role="alert">{error}</div>}
       {message && <div className="auth-success-banner" role="status">{message}</div>}
-      {pending ? <div className="auth-input-group"><label className="auth-label" htmlFor="auth-code">Mã xác minh</label>
-        <input id="auth-code" className="auth-input" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} required />
+      {pending ? <div className="auth-input-group"><label className="auth-label" htmlFor={`${formId}-code`}>Mã xác minh</label>
+        <input id={`${formId}-code`} className="auth-input" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} required />
       </div> : <>
-        {tab === 'register' && <div className="auth-input-group"><label className="auth-label" htmlFor="auth-name">Họ và tên</label><input id="auth-name" className="auth-input" autoComplete="name" maxLength={100} value={fullName} onChange={e => setFullName(e.target.value)} required /></div>}
-        <div className="auth-input-group"><label className="auth-label" htmlFor="auth-email">Email</label><input id="auth-email" className="auth-input" type="email" autoComplete="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} required /></div>
-        <div className="auth-input-group"><label className="auth-label" htmlFor="auth-password">Mật khẩu</label><input id="auth-password" className="auth-input" type="password" autoComplete={tab === 'login' ? 'current-password' : 'new-password'} minLength={tab === 'register' ? 8 : undefined} value={password} onChange={e => setPassword(e.target.value)} required /></div>
-        {tab === 'register' && <div className="auth-input-group"><label className="auth-label" htmlFor="auth-confirm">Xác nhận mật khẩu</label><input id="auth-confirm" className="auth-input" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required /></div>}
+        {tab === 'register' && <div className="auth-input-group"><label className="auth-label" htmlFor={`${formId}-name`}>Họ và tên</label><input id={`${formId}-name`} className="auth-input" autoComplete="name" maxLength={100} value={fullName} onChange={e => setFullName(e.target.value)} required /></div>}
+        <div className="auth-input-group"><label className="auth-label" htmlFor={`${formId}-email`}>Email</label><input id={`${formId}-email`} className="auth-input" type="email" autoComplete="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} required /></div>
+        <div className="auth-input-group"><label className="auth-label" htmlFor={`${formId}-password`}>Mật khẩu</label><input id={`${formId}-password`} className="auth-input" type="password" autoComplete={tab === 'login' ? 'current-password' : 'new-password'} minLength={tab === 'register' ? 8 : undefined} value={password} onChange={e => setPassword(e.target.value)} required /></div>
+        {tab === 'register' && <div className="auth-input-group"><label className="auth-label" htmlFor={`${formId}-confirm`}>Xác nhận mật khẩu</label><input id={`${formId}-confirm`} className="auth-input" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required /></div>}
       </>}
       <button type="submit" className="auth-submit-btn" disabled={busy}>{busy ? 'Đang xử lý...' : pending ? 'Xác minh và tạo tài khoản' : tab === 'login' ? 'Đăng nhập' : 'Gửi mã xác minh'}</button>
       {pending && <button type="button" disabled={busy} className="auth-footer-link" onClick={() => { setPending(false); setError(''); setMessage(''); setCode('') }}>Sửa thông tin / Gửi lại mã</button>}

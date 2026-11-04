@@ -6,7 +6,7 @@ import EventCatalogEditor from '../components/EventCatalogEditor'
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 
 export default function AdminEventsPage({ onBackToHome }) {
-  const { token, user, openAuthModal } = useAuth()
+  const { token, user, loading: authLoading, openAuthModal } = useAuth()
   const [editingId, setEditingId] = useState(null)
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -42,7 +42,7 @@ export default function AdminEventsPage({ onBackToHome }) {
   }
 
   const fetchEvents = useCallback(async () => {
-    if (!token) return
+    if (!token || user?.role !== 'MANAGER') return
     setLoading(true)
     try {
       const url = filterStatus === 'ALL'
@@ -67,7 +67,7 @@ export default function AdminEventsPage({ onBackToHome }) {
     } finally {
       setLoading(false)
     }
-  }, [token, filterStatus])
+  }, [token, user?.role, filterStatus])
 
   useEffect(() => {
     const timer = setTimeout(fetchEvents, 0)
@@ -228,6 +228,8 @@ export default function AdminEventsPage({ onBackToHome }) {
       notify('Lỗi kết nối máy chủ', 'error')
     }
   }
+
+  if (authLoading) return <main className="admin-container" role="status">Đang kiểm tra tài khoản...</main>
 
   // Nếu người dùng chưa có quyền Quản lý (Chặn theo nguyên tắc RBAC)
   if (user?.role !== 'MANAGER') {
