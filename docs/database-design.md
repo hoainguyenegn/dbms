@@ -102,7 +102,7 @@ erDiagram
     EVENT_SHOWINGS {
         int id PK
         int event_id FK
-        string showing_code UK
+        string showing_code "UK with event_id"
         string venue_name
         string city_code
         datetime sales_start_at
@@ -290,7 +290,7 @@ Quản lý lịch diễn và mốc thời gian mở/đóng bán vé của từng
 | :--- | :--- | :---: | :---: | :--- | :--- |
 | `id` | `INT UNSIGNED` | No | Auto Inc | **PK** | Định danh duy nhất của buổi tổ chức |
 | `event_id` | `INT UNSIGNED` | No | | **FK** $\to$ `events(id)` | Tham chiếu sự kiện cha (`ON DELETE RESTRICT`) |
-| `showing_code` | `VARCHAR(32)` | No | | **UNIQUE** | Mã nghiệp vụ suất diễn (ví dụ: `SHW-2026-001`) |
+| `showing_code` | `VARCHAR(32)` | No | | **UNIQUE(event_id, showing_code)** | Mã nghiệp vụ suất diễn (ví dụ: `SHW-2026-001`) |
 | `venue_name` | `VARCHAR(150)` | No | | | Địa điểm tổ chức (ví dụ: Nhà hát Hòa Bình) |
 | `city_code` | `VARCHAR(10)` | No | | | Mã thành phố/khu vực: `HCM`, `HN`, `DN`... |
 | `sales_start_at`| `DATETIME(3)` | No | | | Thời điểm mở bán vé (UTC) |

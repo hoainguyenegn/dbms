@@ -193,7 +193,7 @@ export default function SystemStatus() {
         </a>
         <div className="workspace-label"><span className="workspace-avatar">D</span><div>Đồ án DBMS<small>Môi trường phát triển</small></div><span className="workspace-dot" /></div>
         <p className="nav-caption">WORKSPACE</p>
-        <nav aria-label="Điều hướng chính">
+        <nav aria-label="Điều hướng hệ thống">
           {[
             { id: 'overview', icon: 'grid', label: 'Tổng quan' },
             { id: 'connections', icon: 'server', label: 'Dịch vụ & kết nối' },
@@ -269,7 +269,6 @@ export default function SystemStatus() {
               <p className="quickstart-note">Khởi động MySQL/Redis trực tiếp trên máy theo <strong>README.md</strong>. Các lệnh kiểm tra dùng host, port và tài khoản mẫu; thay bằng cấu hình của bạn nếu đã đổi. Chuẩn bị <code>.env</code> và dependencies trước khi chạy.</p>
             </section>
           </div>
-          <footer className="site-footer"><span><Icon name="ticket" />Event Ticketing <span className="footer-divider">/</span> Đồ án DBMS</span><span>Giai đoạn skeleton · Chưa có chức năng đặt vé</span></footer>
         </main>
       </div>
     </div>

@@ -1,0 +1,27 @@
+.evt-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(15,23,42,.5); }
+.evt-modal { position: relative; width: 100%; max-width: 580px; max-height: 88dvh; overflow-y: auto; border-radius: 16px; background: #fff; box-shadow: 0 24px 60px rgba(15,23,42,.16); }
+.evt-close-btn { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: #64748b; background: #f5f6f8; font-size: 24px; }
+.evt-header { padding: 28px 56px 22px 28px; border-bottom: 1px solid #edf0f4; }
+.evt-header h2 { color: #1e293b; font-size: 22px; line-height: 1.4; }
+.evt-description { margin-top: 12px; font-size: 13px; color: #64748b; line-height: 1.7; }
+.evt-description summary { cursor: pointer; color: #475569; }
+.evt-description p { margin-top: 8px; }
+.evt-body { display: grid; gap: 20px; padding: 24px 28px 28px; }
+.showing-selector { display: flex; gap: 8px; overflow-x: auto; padding: 3px 3px 6px; }
+.showing-chip { flex-shrink: 0; display: grid; gap: 5px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #475569; font-size: 12px; text-align: left; }
+.showing-chip span { color: #64748b; font-size: 11px; }
+.showing-chip.active { border-color: #e63946; background: #fff5f5; color: #c62f3b; }
+.showing-meta { display: grid; gap: 6px; color: #475569; font-size: 13px; line-height: 1.5; }
+.showing-meta p:first-child { color: #1e293b; font-weight: 600; }
+.ticket-types-list { display: grid; }
+.ticket-type-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1px solid #edf0f4; font-size: 14px; }
+.ticket-type-card strong { color: #334155; font-weight: 600; }
+.ticket-type-card p { margin-top: 4px; color: #64748b; font-size: 12px; }
+.ticket-type-card > span { color: #334155; font-weight: 600; white-space: nowrap; }
+.evt-sale-note { color: #64748b; font-size: 13px; line-height: 1.6; }
+.evt-book-button { min-height: 44px; width: 100%; border-radius: 9px; background: #e63946; color: #fff; font-size: 14px; font-weight: 600; }
+.evt-book-button:hover:not(:disabled) { background: #c92e3b; }
+.evt-state { min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; padding: 40px 28px; color: #64748b; font-size: 14px; text-align: center; }
+.evt-spinner { width: 26px; height: 26px; border: 3px solid #e2e8f0; border-top-color: #e63946; border-radius: 50%; animation: evt-spin .7s linear infinite; }
+@keyframes evt-spin { to { transform: rotate(360deg); } }
+@media (max-width: 560px) { .evt-backdrop { padding: 14px; } .evt-header { padding: 24px 52px 20px 20px; } .evt-header h2 { font-size: 19px; } .evt-body { padding: 20px; gap: 16px; } }

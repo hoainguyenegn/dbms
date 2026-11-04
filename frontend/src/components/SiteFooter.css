@@ -1,0 +1,11 @@
+.site-footer { flex-shrink: 0; }
+.site-footer .footer-top { grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); }
+.site-footer .footer-top > .site-footer-about { grid-column: auto; }
+.site-footer .footer-desc { max-width: 360px; }
+@media (max-width: 760px) {
+  .site-footer .footer-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-footer .footer-top > .site-footer-about { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .site-footer .footer-top { grid-template-columns: minmax(0, 1fr); }
+}

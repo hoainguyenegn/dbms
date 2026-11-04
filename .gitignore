@@ -23,3 +23,9 @@ npm-debug.log*
 # Editors
 .vscode/
 .idea/
+
+# Local database repair backups
+tmp/encoding-backups/
+
+# Local connection configuration backups
+tmp/local-config-backups/

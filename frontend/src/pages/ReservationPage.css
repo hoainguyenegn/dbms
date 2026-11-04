@@ -1,0 +1,74 @@
+.reservation-app { background: #f8fafc; color: #1e293b; min-height: 0; }
+.reservation-main { width: min(100% - 48px, 1040px); margin: 0 auto; padding: 30px 0 64px; }
+.reservation-back { color: #64748b; font-size: 13px; }
+.reservation-back:hover { color: #e63946; }
+.reservation-heading { margin: 22px 0 28px; }
+.reservation-heading h1 { margin-bottom: 8px; color: #172334; font-size: 30px; line-height: 1.25; font-weight: 750; }
+.reservation-heading p { color: #64748b; font-size: 14px; line-height: 1.6; }
+.reservation-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, .85fr); align-items: start; gap: 24px; }
+.ticket-selection,.reservation-summary { min-width: 0; border: 1px solid #e3e8ef; border-radius: 14px; background: #fff; }
+.ticket-selection { padding: 26px; }
+.showing-choice { padding-bottom: 22px; margin-bottom: 22px; border-bottom: 1px solid #eef1f5; }
+.showing-choice label { display: block; margin-bottom: 8px; color: #64748b; font-size: 12px; font-weight: 600; }
+.showing-choice select { width: 100%; min-height: 44px; border: 1px solid #dce3ec; border-radius: 8px; padding: 9px 12px; color: #334155; background: #fff; font-size: 13px; }
+.reservation-event { padding-bottom: 22px; border-bottom: 1px solid #eef1f5; }
+.reservation-event h2 { margin: 0 0 12px; font-size: 20px; line-height: 1.45; font-weight: 700; }
+.reservation-event p { margin: 4px 0 0; color: #64748b; font-size: 13px; line-height: 1.6; }
+.ticket-option { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 0; border-bottom: 1px solid #eef1f5; }
+.ticket-option:last-child { border-bottom: 0; }
+.ticket-option.is-sold-out .ticket-option-info { opacity: .55; }
+.ticket-option-info h3 { margin: 0 0 7px; font-size: 15px; font-weight: 650; }
+.ticket-option-info p { color: #e63946; font-size: 14px; font-weight: 650; }
+.ticket-option-info > span { display: inline-block; margin-top: 6px; color: #64748b; font-size: 12px; }
+.quantity-control { display: grid; grid-template-columns: 34px 34px 34px; align-items: center; flex: 0 0 auto; }
+.quantity-control button { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #dce3ec; border-radius: 8px; color: #334155; background: #fff; font-size: 19px; line-height: 1; }
+.quantity-control button:hover:not(:disabled) { border-color: #e63946; color: #e63946; background: #fff5f6; }
+.quantity-control button:disabled { color: #a5afbb; background: #f8fafc; }
+.quantity-control output { text-align: center; color: #1e293b; font-size: 14px; font-weight: 650; }
+.ticket-limit-note { margin: 12px 0 0; color: #94a3b8; font-size: 12px; }
+.reservation-summary { position: sticky; top: var(--site-header-offset, 88px); padding: 24px; }
+.reservation-summary h2 { margin-bottom: 20px; font-size: 18px; font-weight: 700; }
+.summary-empty { color: #94a3b8; font-size: 13px; line-height: 1.6; padding: 4px 0 16px; }
+.summary-items { display: grid; gap: 14px; padding: 0 0 22px; }
+.summary-item { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; color: #475569; font-size: 13px; line-height: 1.5; }
+.summary-item small { color: #94a3b8; font-size: 12px; white-space: nowrap; }
+.summary-item strong { flex: 0 0 auto; color: #334155; font-size: 13px; font-weight: 600; }
+.summary-total { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 20px; margin-bottom: 22px; border-top: 1px solid #eef1f5; font-size: 14px; }
+.summary-total strong { color: #e63946; font-size: 21px; font-weight: 750; white-space: nowrap; }
+.reservation-primary { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; padding: 10px 16px; border-radius: 9px; background: #e63946; color: #fff; font-size: 14px; font-weight: 650; text-align: center; }
+.reservation-primary:hover:not(:disabled) { background: #c92e3b; }
+.reservation-primary:disabled { cursor: not-allowed; opacity: .5; }
+.reservation-note { margin: 13px 0 0; color: #94a3b8; font-size: 11px; text-align: center; line-height: 1.6; }
+.hold-timer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; margin-bottom: 20px; border-radius: 8px; background: #fff4f5; color: #a72f3b; }
+.hold-timer span { font-size: 12px; line-height: 1.4; }
+.hold-timer strong { flex: 0 0 auto; font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 750; }
+.reservation-release { display: block; margin: 15px auto 0; color: #64748b; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.reservation-release:hover { color: #e63946; }
+.held-ticket-list { display: grid; gap: 14px; padding-top: 22px; }
+.held-ticket-row { display: flex; justify-content: space-between; gap: 16px; color: #475569; font-size: 14px; }
+.held-ticket-row strong { font-weight: 600; }
+.reservation-alert,.reservation-notice { padding: 13px 16px; margin-bottom: 20px; border-radius: 9px; font-size: 13px; line-height: 1.6; }
+.reservation-alert { border: 1px solid #f7d9de; background: #fff4f5; color: #a72f3b; }
+.reservation-notice { border: 1px solid #e2e8f0; background: #fff; color: #64748b; }
+.reservation-notice a { color: #e63946; text-decoration: underline; }
+.reservation-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 300px; padding: 24px; text-align: center; color: #64748b; font-size: 14px; }
+.reservation-state h2 { color: #334155; font-size: 20px; line-height: 1.5; }
+.reservation-state p { max-width: 400px; line-height: 1.6; }
+.reservation-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; margin-top: 5px; padding: 8px 16px; border: 1px solid #dce3ec; border-radius: 8px; color: #334155; background: #fff; font-size: 13px; font-weight: 600; }
+.reservation-secondary:hover { border-color: #b8c3d2; background: #f8fafc; }
+@media (max-width: 760px) {
+  .reservation-main { width: min(100% - 32px, 1040px); padding: 22px 0 40px; }
+  .reservation-heading { margin: 20px 0 22px; }
+  .reservation-heading h1 { font-size: 26px; }
+  .reservation-layout { grid-template-columns: 1fr; gap: 18px; }
+  .reservation-summary { position: static; }
+  .ticket-selection { padding: 22px; }
+}
+@media (max-width: 420px) {
+  .ticket-selection,.reservation-summary { padding: 18px; border-radius: 12px; }
+  .reservation-event h2 { font-size: 18px; }
+  .ticket-option { gap: 12px; }
+  .quantity-control { grid-template-columns: 32px 28px 32px; }
+  .quantity-control button { width: 32px; height: 32px; }
+  .summary-total strong { font-size: 20px; }
+}
