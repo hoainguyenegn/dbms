@@ -8,6 +8,7 @@ import SystemStatus from './pages/SystemStatus'
 import BookingPage from './pages/BookingPage'
 import ReservationPage from './pages/ReservationPage'
 import AdminEventsPage from './pages/AdminEventsPage'
+import StatsPage from './pages/StatsPage';
 import './App.css'
 
 const goHome = () => window.location.assign('/')
@@ -24,6 +25,7 @@ export default function App() {
     case '/checkout':
     case '/my-tickets': page = <BookingPage />; break
     case '/admin/events': page = <AdminEventsPage onBackToHome={goHome} />; break
+    case '/admin/stats': page = <StatsPage />; break // <--  (F07)
     case '/account': page = <AuthPage onBackToHome={goHome} />; break
     case '/system': page = <SystemStatus />; break
     default:
