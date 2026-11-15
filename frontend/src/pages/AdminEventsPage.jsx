@@ -269,9 +269,21 @@ export default function AdminEventsPage({ onBackToHome }) {
           <h1 className="admin-page-title">Quản lý sự kiện</h1>
           <p className="admin-subtitle">Danh mục sự kiện, lịch biểu diễn và cấu hình mở bán vé</p>
         </div>
-        <button className="btn-create-event" onClick={() => { setShowCreateModal(true); setFormStep(1); }}>
-          + Tạo sự kiện mới
-        </button>
+
+        {/* Nút tác vụ Header (Tạo sự kiện & Chuyển sang Thống kê F07) */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => window.location.assign('/admin/stats')}
+            style={{ border: '1px solid #cbd5e1', background: '#fff' }}
+          >
+            Báo cáo Thống kê F07
+          </button>
+          <button className="btn-create-event" onClick={() => { setShowCreateModal(true); setFormStep(1); }}>
+            + Tạo sự kiện mới
+          </button>
+        </div>
       </header>
 
       {/* Notification Toast */}

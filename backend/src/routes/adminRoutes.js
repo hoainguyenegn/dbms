@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { verifyToken, requireManager } from '../middlewares/authMiddleware.js';
+import { getStats } from '../controllers/statsController.js';
 import {
   getAdminEvents,
   getAdminEventDetail,
@@ -39,6 +40,9 @@ router.delete('/showings/:id', deleteShowing);
 router.post('/showings/:id/ticket-types', createTicketType);
 router.patch('/ticket-types/:id', updateTicketType);
 router.delete('/ticket-types/:id', deleteTicketType);
+
+// F07: Thống kê số vé xác nhận, tổng tiền, các buổi chưa có đơn
+router.get('/stats', getStats);
 
 // Scoped URLs reject child IDs that belong to a different parent.
 router.patch('/events/:eventId/showings/:id', updateShowing);
