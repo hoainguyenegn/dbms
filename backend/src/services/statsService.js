@@ -1,135 +1,97 @@
-import { mysqlPool, redisClient } from '../config/database.js';
+function invalidFilter(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
 
-export async function getAdminStats(pool) {
-  const cacheKey = 'eventbox:stats:dashboard';
+export function parseStatsFilters(query = {}) {
+  const filters = {};
+  for (const key of ['eventId', 'showingId', 'ticketTypeId']) {
+    if (query[key] === undefined || query[key] === '') continue;
+    if (typeof query[key] !== 'string' || !/^[1-9]\d*$/.test(query[key]) || !Number.isSafeInteger(Number(query[key]))) {
+      throw invalidFilter(`${key} phải là số nguyên dương.`);
+    }
+    filters[key] = Number(query[key]);
+  }
+  for (const key of ['from', 'to']) {
+    const value = query[key];
+    if (value === undefined || value === '') continue;
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw invalidFilter('Ngày phải có định dạng YYYY-MM-DD.');
+    const date = new Date(`${value}T00:00:00Z`);
+    if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw invalidFilter('Ngày không hợp lệ.');
+    filters[key] = value;
+  }
+  if (filters.from && filters.to && filters.from > filters.to) throw invalidFilter('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.');
+  return filters;
+}
 
-  // 1. Xóa cache Redis cũ để luôn quét trực tiếp MySQL
-  if (redisClient?.isReady) {
-    try {
-      await redisClient.del(cacheKey);
-    } catch (err) {
-      console.warn('Xóa Redis cache cũ thất bại:', err.message);
+export async function getAdminStats(pool, query = {}) {
+  const filters = parseStatsFilters(query);
+  const conditions = [];
+  const params = [];
+  for (const [key, column] of [['eventId', 'e.id'], ['showingId', 's.id'], ['ticketTypeId', 'tt.id']]) {
+    if (filters[key]) { conditions.push(`${column} = ?`); params.push(filters[key]); }
+  }
+  for (const [key, operator, extraDay] of [['from', '>=', 0], ['to', '<', 86400000]]) {
+    if (filters[key]) {
+      conditions.push(`s.starts_at ${operator} ?`);
+      params.push(new Date(new Date(`${filters[key]}T00:00:00+07:00`).getTime() + extraDay));
     }
   }
-
-  let confirmedTickets = 0;
-  let totalRevenueVnd = 0;
-
-  // 2. Query 1: Lấy từ bảng bookings (thử cả cột total_amount_vnd và total_amount)
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const connection = await pool.getConnection();
   try {
-    const [salesRows] = await pool.query(`
-      SELECT 
-        COALESCE(SUM(bi.quantity), 0) AS total_confirmed_tickets,
-        COALESCE(SUM(
-          CASE 
-            WHEN b.total_amount_vnd IS NOT NULL THEN b.total_amount_vnd 
-            ELSE b.total_amount 
-          END
-        ), 0) AS total_revenue_vnd
-      FROM bookings b
-      JOIN booking_items bi ON bi.booking_id = b.id
-      WHERE LOWER(b.status) IN ('confirmed', 'success', 'paid', 'completed', 'active')
-    `);
-
-    if (salesRows && salesRows[0]) {
-      confirmedTickets = Number(salesRows[0].total_confirmed_tickets || 0);
-      totalRevenueVnd = Number(salesRows[0].total_revenue_vnd || 0);
-    }
-  } catch (err) {
-    // Nếu bảng bookings bị lỗi tên cột, quét từ booking_items kết hợp ticket_types
-    try {
-      const [salesAlt] = await pool.query(`
-        SELECT 
-          COALESCE(SUM(bi.quantity), 0) AS total_confirmed_tickets,
-          COALESCE(SUM(bi.quantity * tt.price_vnd), 0) AS total_revenue_vnd
-        FROM bookings b
-        JOIN booking_items bi ON bi.booking_id = b.id
-        JOIN ticket_types tt ON tt.id = bi.ticket_type_id
-        WHERE LOWER(b.status) IN ('confirmed', 'success', 'paid', 'completed', 'active')
-      `);
-      if (salesAlt && salesAlt[0]) {
-        confirmedTickets = Number(salesAlt[0].total_confirmed_tickets || 0);
-        totalRevenueVnd = Number(salesAlt[0].total_revenue_vnd || 0);
-      }
-    } catch (innerErr) {
-      console.warn('Lỗi query bookings:', innerErr.message);
-    }
-  }
-
-  // 3. Fallback: Nếu bookings chưa có dữ liệu, lấy từ bảng reservations đã chốt
-  if (confirmedTickets === 0) {
-    try {
-      const [resRows] = await pool.query(`
-        SELECT 
-          COALESCE(SUM(ri.quantity), 0) AS total_tickets,
-          COALESCE(SUM(ri.quantity * tt.price_vnd), 0) AS total_revenue
-        FROM reservations r
-        JOIN reservation_items ri ON ri.reservation_id = r.id
-        JOIN ticket_types tt ON tt.id = ri.ticket_type_id
-        WHERE LOWER(r.status) IN ('active', 'confirmed', 'consumed')
-      `);
-
-      if (resRows && resRows[0]) {
-        confirmedTickets = Number(resRows[0].total_tickets || 0);
-        totalRevenueVnd = Number(resRows[0].total_revenue || 0);
-      }
-    } catch (fallbackErr) {
-      console.warn('Lỗi query reservations:', fallbackErr.message);
-    }
-  }
-
-  // 4. Query danh sách suất diễn chưa từng có đơn
-  let unbookedShowings = [];
-  try {
-    const [showingRows] = await pool.query(`
-      SELECT 
-        s.id AS showing_id,
-        s.showing_code,
-        e.title AS event_title,
-        s.venue_name,
-        DATE_FORMAT(s.starts_at, '%Y-%m-%d %H:%i') AS starts_at
-      FROM event_showings s
-      JOIN events e ON e.id = s.event_id
-      WHERE s.id NOT IN (
-        SELECT DISTINCT bi.showing_id 
-        FROM booking_items bi
-        JOIN bookings b ON b.id = bi.booking_id
-        WHERE LOWER(b.status) IN ('confirmed', 'success', 'paid', 'completed', 'active')
-      )
-      AND s.id NOT IN (
-        SELECT DISTINCT ri.showing_id 
-        FROM reservation_items ri
-        JOIN reservations r ON r.id = ri.reservation_id
-        WHERE LOWER(r.status) IN ('active', 'confirmed', 'consumed')
-      )
-      ORDER BY s.starts_at ASC
-    `);
-
-    unbookedShowings = (showingRows || []).map(row => ({
-      showingId: Number(row.showing_id),
-      showingCode: row.showing_code || '',
-      eventTitle: row.event_title || '',
-      venueName: row.venue_name || '',
-      startsAt: row.starts_at || ''
+    await connection.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    await connection.beginTransaction();
+    const [rows] = await connection.query(`
+      SELECT e.id AS event_id, e.title AS event_title, s.id AS showing_id,
+             s.showing_code, s.venue_name,
+             DATE_FORMAT(s.starts_at, '%Y-%m-%dT%H:%i:%s.000Z') AS starts_at,
+             tt.id AS ticket_type_id, tt.type_name, tt.capacity,
+             COALESCE(sales.quantity, 0) AS confirmed_tickets,
+             COALESCE(sales.revenue, 0) AS revenue_vnd
+      FROM events e
+      JOIN event_showings s ON s.event_id = e.id
+      LEFT JOIN ticket_types tt ON tt.showing_id = s.id
+      LEFT JOIN (
+        SELECT bi.ticket_type_id, SUM(bi.quantity) AS quantity,
+               SUM(bi.subtotal_vnd) AS revenue
+        FROM booking_items bi JOIN bookings b ON b.id = bi.booking_id
+        WHERE b.status = 'CONFIRMED'
+        GROUP BY bi.ticket_type_id
+      ) sales ON sales.ticket_type_id = tt.id
+      ${where}
+      ORDER BY e.id, s.starts_at, s.id, tt.id`, params);
+    const [unbooked] = await connection.query(`
+      SELECT DISTINCT s.id AS showing_id, s.showing_code, e.title AS event_title,
+             s.venue_name, DATE_FORMAT(s.starts_at, '%Y-%m-%dT%H:%i:%s.000Z') AS starts_at
+      FROM event_showings s JOIN events e ON e.id = s.event_id
+      LEFT JOIN ticket_types tt ON tt.showing_id = s.id
+      ${where || 'WHERE 1 = 1'}
+      AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.showing_id = s.id AND b.status = 'CONFIRMED')
+      ORDER BY starts_at, showing_id`, params);
+    await connection.commit();
+    const details = rows.map(row => ({
+      eventId: Number(row.event_id), eventTitle: row.event_title,
+      showingId: Number(row.showing_id), showingCode: row.showing_code,
+      venueName: row.venue_name, startsAt: row.starts_at,
+      ticketTypeId: row.ticket_type_id === null ? null : Number(row.ticket_type_id),
+      typeName: row.type_name, capacity: Number(row.capacity || 0),
+      confirmedTickets: Number(row.confirmed_tickets), totalRevenueVnd: Number(row.revenue_vnd),
     }));
-  } catch (err) {
-    console.warn('Lỗi query unbooked:', err.message);
+    return { source: 'mysql_database', data: {
+      confirmedTickets: details.reduce((sum, row) => sum + row.confirmedTickets, 0),
+      totalRevenueVnd: details.reduce((sum, row) => sum + row.totalRevenueVnd, 0),
+      details,
+      unbookedShowings: unbooked.map(row => ({
+        showingId: Number(row.showing_id), showingCode: row.showing_code,
+        eventTitle: row.event_title, venueName: row.venue_name, startsAt: row.starts_at,
+      })),
+    } };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
-
-  const resultData = {
-    confirmedTickets,
-    totalRevenueVnd,
-    unbookedShowings
-  };
-
-  // 5. Cache ngắn hạn vào Redis (2 giây)
-  if (redisClient?.isReady) {
-    try {
-      await redisClient.set(cacheKey, JSON.stringify(resultData), { EX: 2 });
-    } catch (err) {
-      console.warn('Redis write warning:', err.message);
-    }
-  }
-
-  return { source: 'mysql_database', data: resultData };
 }
